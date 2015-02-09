@@ -1,0 +1,12 @@
+db
+incremental_db
+output_files
+sim
+simulation
+old
+*.cdf
+*.cof
+*.map
+*.pof
+*.qws
+*.stp

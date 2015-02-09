@@ -1,0 +1,267 @@
+// Screen initialize sequence and defines derived from Adafruit library
+// https://github.com/adafruit/Adafruit_ILI9341
+// modified from C into Verilog format by Ken Taylor
+// Original Adafruit license text follows:
+/***************************************************
+  This is our library for the Adafruit  ILI9341 Breakout and Shield
+  ----> http://www.adafruit.com/products/1651
+
+  Check out the links above for our tutorials and wiring diagrams
+  These displays use SPI to communicate, 4 or 5 pins are required to
+  interface (RST is optional)
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing
+  products from Adafruit!
+
+  Written by Limor Fried/Ladyada for Adafruit Industries.
+  MIT license, all text above must be included in any redistribution
+ ****************************************************/
+
+`define ILI9341_TFTWIDTH  240
+`define ILI9341_TFTHEIGHT 320
+
+`define ILI9341_NOP     8'h00
+`define ILI9341_SWRESET 8'h01
+`define ILI9341_RDDID   8'h04
+`define ILI9341_RDDST   8'h09
+
+`define ILI9341_SLPIN   8'h10
+`define ILI9341_SLPOUT  8'h11
+`define ILI9341_PTLON   8'h12
+`define ILI9341_NORON   8'h13
+
+`define ILI9341_RDMODE  8'h0A
+`define ILI9341_RDMADCTL  8'h0B
+`define ILI9341_RDPIXFMT  8'h0C
+`define ILI9341_RDIMGFMT  8'h0A
+`define ILI9341_RDSELFDIAG  8'h0F
+
+`define ILI9341_INVOFF  8'h20
+`define ILI9341_INVON   8'h21
+`define ILI9341_GAMMASET 8'h26
+`define ILI9341_DISPOFF 8'h28
+`define ILI9341_DISPON  8'h29
+
+`define ILI9341_CASET   8'h2A
+`define ILI9341_PASET   8'h2B
+`define ILI9341_RAMWR   8'h2C
+`define ILI9341_RAMRD   8'h2E
+
+`define ILI9341_PTLAR   8'h30
+`define ILI9341_MADCTL  8'h36
+`define ILI9341_PIXFMT  8'h3A
+
+`define ILI9341_FRMCTR1 8'hB1
+`define ILI9341_FRMCTR2 8'hB2
+`define ILI9341_FRMCTR3 8'hB3
+`define ILI9341_INVCTR  8'hB4
+`define ILI9341_DFUNCTR 8'hB6
+
+`define ILI9341_PWCTR1  8'hC0
+`define ILI9341_PWCTR2  8'hC1
+`define ILI9341_PWCTR3  8'hC2
+`define ILI9341_PWCTR4  8'hC3
+`define ILI9341_PWCTR5  8'hC4
+`define ILI9341_VMCTR1  8'hC5
+`define ILI9341_VMCTR2  8'hC7
+
+`define ILI9341_RDID1   8'hDA
+`define ILI9341_RDID2   8'hDB
+`define ILI9341_RDID3   8'hDC
+`define ILI9341_RDID4   8'hDD
+
+`define ILI9341_GMCTRP1 8'hE0
+`define ILI9341_GMCTRN1 8'hE1
+/*
+`define ILI9341_PWCTR6  8'hFC
+
+*/
+
+// Color definitions
+`define ILI9341_BLACK       16'h0000      //   0,   0,   0
+`define ILI9341_NAVY        16'h000F      //   0,   0, 128
+`define ILI9341_DARKGREEN   16'h03E0      //   0, 128,   0
+`define ILI9341_DARKCYAN    16'h03EF      //   0, 128, 128
+`define ILI9341_MAROON      16'h7800      // 128,   0,   0
+`define ILI9341_PURPLE      16'h780F      // 128,   0, 128
+`define ILI9341_OLIVE       16'h7BE0      // 128, 128,   0
+`define ILI9341_LIGHTGREY   16'hC618      // 192, 192, 192
+`define ILI9341_DARKGREY    16'h7BEF      // 128, 128, 128
+`define ILI9341_BLUE        16'h001F      //   0,   0, 255
+`define ILI9341_GREEN       16'h07E0      //   0, 255,   0
+`define ILI9341_CYAN        16'h07FF      //   0, 255, 255
+`define ILI9341_RED         16'hF800      // 255,   0,   0
+`define ILI9341_MAGENTA     16'hF81F      // 255,   0, 255
+`define ILI9341_YELLOW      16'hFFE0      // 255, 255,   0
+`define ILI9341_WHITE       16'hFFFF      // 255, 255, 255
+`define ILI9341_ORANGE      16'hFD20      // 255, 165,   0
+`define ILI9341_GREENYELLOW 16'hAFE5      // 173, 255,  47
+`define ILI9341_PINK        16'hF81F
+
+reg [9:0] screen_init [255:0];
+integer i;
+
+// a bit of a hack:
+//  Quartus can't deal with the changing integer in an initial block,
+//  but is ok in an always @(*).
+//  However, always @(*) needs a RHS variable to change to trigger in sim,
+//  so we set i in an initial block to trigger it.
+initial i = 0;
+always @(*) begin
+    i = -1;
+//                             dly   DCn   data
+    i = i+1; screen_init[i] = {1'b1, 1'b0, `ILI9341_SWRESET};
+
+    //i = i+1; screen_init[i] = {1'b1, 1'b0, `ILI9341_RDDST};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, 8'hEF};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h03};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h80};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h02};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, 8'hCF};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'hC1};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h30};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, 8'hED};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h64};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h03};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h12};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h81};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, 8'hE8};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h85};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h78};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, 8'hCB};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h39};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h2C};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h34};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h02};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, 8'hF7};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h20};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, 8'hEA};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_PWCTR1}; //Power control 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h23}; //VRH[5:0] 
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_PWCTR2}; //Power control 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h10}; //SAP[2:0];BT[3:0] 
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_VMCTR1}; //VCM control 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h3e};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h28};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_VMCTR2}; //VCM control2 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h86}; 
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_MADCTL}; // Memory Access Control 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h48};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_PIXFMT};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h55};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_FRMCTR1}; 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h18};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_DFUNCTR}; // Display Function Control 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h08};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h82};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h27};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, 8'hF2}; // 3Gamma Function Disable 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_GAMMASET}; //Gamma curve selected 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h01};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_GMCTRP1}; //Set Gamma 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0F};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h31};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h2B};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0C};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0E};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h08};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h4E};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'hF1};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h37};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h07};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h10};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h03};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0E};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h09};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_GMCTRN1}; //Set Gamma 
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0E};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h14};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h03};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h11};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h07};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h31};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'hC1};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h48};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h08};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0F};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0C};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h31};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h36};
+    i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0F};
+    
+    i = i+1; screen_init[i] = {1'b1, 1'b0, `ILI9341_SLPOUT}; //Exit Sleep 
+    i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_DISPON}; //Display on
+    
+    // draw a single pixel test
+    //i = i+1; screen_init[i] = {1'b1, 1'b0, `ILI9341_CASET}; // Column addr set
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00}; 
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0a}; // xstart
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0a}; // xend
+    //i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_PASET}; // Row addr set
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00}; 
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h0a}; // ystart
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h1a}; // yend
+    //i = i+1; screen_init[i] = {1'b0, 1'b0, `ILI9341_RAMWR}; // write to RAM
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h1f}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h1f}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h1f}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h1f}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h07};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'he0}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h07};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'he0}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h07};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'he0}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h07};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'he0}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'hf8};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'hf8};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'hf8};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00}; // color
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'hf8};
+    //i = i+1; screen_init[i] = {1'b0, 1'b1, 8'h00}; // color
+    
+    i = i+1; screen_init[i] = 0; // halt (0 is nop)
+end
