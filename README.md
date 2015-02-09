@@ -1,0 +1,17 @@
+# pockelizer
+Pocket Logic Analyzer for MAX 10 FPGA and Adafruit Arduino TFT
+
+The plan is to eventually make a simple hand-held logic analyzer. Right now all it does is display a pretty test pattern on the screen.
+
+It uses [this board](http://www.altera.com/products/devkits/altera/kit-max-10-evaluation.html) with [this screen](https://www.adafruit.com/products/1947).
+However, it doesn't use the touch interface yet. The capacitive touch interface uses the I2C pins which are not pinned out on the
+MAX 10 board by default, so I may need to provide some diagrams showing how to solder that up later.
+
+You can compile the design using [Quartus II Web Edition](http://www.altera.com/products/software/quartus-ii/web-edition/qts-we-index.html).
+I'm going to try to avoid proprietary components so it may be ported easily to other boards and other FPGA manufacturers.
+Notably, I am not going to use a NIOS II microcontroller for the main program logic. Instead everything will be HDL. This may also be because I'm a mashochist.
+
+This particular MAX 10 board was chosen because of the Arduino header, but it doesn't have an on-board USB Blaster.
+To program you can use any generic JTAG programmer, or a USB-Blaster clone, or even a real USB Blaster if you have one. 
+I used [this](http://www.amazon.com/gp/product/B00IRODADK/ref=oh_aui_detailpage_o00_s00?ie=UTF8&psc=1) and it worked fine.
+More detailed instructions on how to program will come in the future.
