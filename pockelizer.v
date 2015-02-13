@@ -25,6 +25,7 @@ module pockelizer (
     assign SD_CSn = 1'b1;
     
     wire tft_busy;
+    wire tft_done;
     reg init_tft;
     reg draw;
     reg [79:0] drawcmd;
@@ -49,6 +50,7 @@ module pockelizer (
         .draw(draw),
         
         .busy(tft_busy),
+        .done(tft_done),
         
         .color(color),
         .xstart(xstart),
@@ -60,8 +62,19 @@ module pockelizer (
         .cury(),
         .cnext()
     );
+    
+    
+    localparam INIT1   = 4'd0;
+    localparam INIT2   = 4'd1;
+    localparam INIT3   = 4'd2;
+    localparam DRAW1   = 4'd3;
+    localparam DRAW2   = 4'd4;
+    localparam DRAW3   = 4'd5;
+    localparam DRAW4   = 4'd6;
+    localparam DRAW5   = 4'd7;
+    localparam MOVE1   = 4'd8;
 
-    reg [3:0] step = 4'b0;
+    reg [3:0] step = INIT1;
     reg [15:0] ctr = 16'b0;
     reg clr_ctr = 1'b1;
     
@@ -80,39 +93,37 @@ module pockelizer (
     always @(posedge clk) begin
         clr_ctr <= 1'b1;
         init_tft <= 1'b0;
-        draw <= 1'b1; // draw by default to make drawing program cleaner
+        draw <= 1'b0;
         
         case(step)
-            0: begin // wait for counter to clear
-                draw <= 1'b0;
+            INIT1: begin // wait for counter to clear
                 if(ctr == 0) step <= 1;
             end
-            1: begin // delay startup
-                draw <= 1'b0;
+            INIT2: begin // delay startup
                 clr_ctr <= 1'b0;
-                if(ctr_max) step <= 2;
+                if(ctr_max) begin 
+                    step <= 2;
+                    init_tft <= 1'b1;
+                end
             end
-            2: begin // initialize display
-                draw <= 1'b0;
-                init_tft <= 1'b1;
-                if(tft_busy) step <= 3;
-            end
-            3: begin // wait initialize
-                if(!tft_busy) step <= 4;
+            INIT3: begin // wait initialize
                 xpos <= 16'd10;
                 ypos <= 16'd10;
                 xdir = 0;
                 ydir = 0;
+                if(tft_done) begin
+                    step <= DRAW1;
+                end
             end
             
             // drawing program       R,    G,    B, xstart,     xend,         ystart,       yend
-            4: begin drawcmd <= {5'd15,6'd31,5'd00, xpos,        xpos+16'd90, ypos,         ypos+16'd20};  if(!tft_busy) step<=step+1; end
-            5: begin drawcmd <= {5'd15,6'd00,5'd15, xpos+16'd30, xpos+16'd50, ypos+16'd20,  ypos+16'd90};  if(!tft_busy) step<=step+1; end
-            6: begin drawcmd <= {5'd00,6'd00,5'd00, xpos,        xpos+16'd90, ypos+16'd90,  ypos+16'd110}; if(!tft_busy) step<=step+1; end
-            7: begin drawcmd <= {5'd00,6'd31,5'd15, xpos,        xpos+16'd90, ypos+16'd140, ypos+16'd160}; draw <= 1'b0; if(!tft_busy) step<=step+1; end
+            DRAW1: begin drawcmd <= {5'd15,6'd31,5'd00, xpos,        xpos+16'd90, ypos,         ypos+16'd20};  if(tft_done) step<=step+1; else draw <= 1'b1; end
+            DRAW2: begin drawcmd <= {5'd15,6'd00,5'd15, xpos+16'd30, xpos+16'd50, ypos+16'd20,  ypos+16'd90};  if(tft_done) step<=step+1; else draw <= 1'b1; end
+            DRAW3: begin drawcmd <= {5'd00,6'd63,5'd00, xpos,        xpos+16'd90, ypos+16'd90,  ypos+16'd110}; if(tft_done) step<=step+1; else draw <= 1'b1; end
+            DRAW4: begin drawcmd <= {5'd00,6'd31,5'd15, xpos,        xpos+16'd90, ypos+16'd140, ypos+16'd160}; if(tft_done) step<=MOVE1;  else draw <= 1'b1; end
             
             // move position
-            8: begin
+            MOVE1: begin
                 if(xpos == 240-90-1) begin
                     xpos <= xpos - 1;
                     xdir <= 1;
@@ -137,16 +148,12 @@ module pockelizer (
                     ypos <= ypos + 1;
                 end
                 
-                step <= 9;
+                step <= DRAW1;
             end 
-            
-            9: begin // wait for draw command to start
-                if(tft_busy) step <= 4;
-            end
             
             default: begin 
                 draw <= 1'b0; 
-                step <= 0; 
+                step <= INIT1; 
             end
         endcase
     end

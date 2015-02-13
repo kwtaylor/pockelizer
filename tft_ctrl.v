@@ -11,6 +11,7 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
     input draw,
     
     output reg busy,
+    output reg done,
     
     // draw command parameters
     input [15:0] color, // rrrr rggg gggb bbbb
@@ -88,11 +89,12 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
     // main state machine
     //////////////////////////////////
     
-    localparam IDLE      = 3'b000;
-    localparam INIT      = 3'b001;
-    localparam INITDLY   = 3'b010;
-    localparam COLORCMD  = 3'b011;
-    localparam COLORDAT  = 3'b100;
+    localparam IDLE      = 3'd0;
+    localparam INIT      = 3'd1;
+    localparam INITDLY   = 3'd2;
+    localparam COLORCMD  = 3'd3;
+    localparam COLORDAT  = 3'd4;
+    localparam DONEDLY   = 3'd5;
     
     reg [2:0] state = IDLE;
     
@@ -109,6 +111,7 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
         //defaults
         csn <= 1'b1;
         busy <= 1'b0;
+        done <= 1'b0;
         cnt_clr <= 1'b1;
         cnext <= 1'b0;
         
@@ -122,9 +125,11 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
                 if(init) begin
                     state <= INIT;
                     spi_go <= 1'b1;
+                    busy <= 1'b1;
                 end else if(draw) begin
                     state <= COLORCMD;
                     spi_go <= 1'b1;
+                    busy <= 1'b1;
                     xstart_r <= xstart;
                     ystart_r <= ystart;
                     xend_r <= xend;
@@ -137,7 +142,10 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
                 busy <= 1'b1;
                 
                 if(initdone) begin
-                    if(spi_done) state <= IDLE;
+                    if(spi_done) begin
+                        state <= DONEDLY;
+                        done <= 1'b1;
+                    end
                 end else begin // handshake and increment
                     if(spi_done && !spi_go) begin
                         spi_go <= 1'b1;
@@ -191,7 +199,10 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
                 busy <= 1'b1;
                 
                 if(cury > yend_r) begin
-                    if(spi_done) state <= IDLE;
+                    if(spi_done) begin
+                        state <= DONEDLY;
+                        done <= 1'b1;
+                    end
                 end else begin // handshake and increment
                     if(spi_done && !spi_go) begin
                         spi_go <= 1'b1;
@@ -211,6 +222,11 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
                 end
             end
             
+            DONEDLY: begin
+                spi_go <= 1'b0;
+                state <= IDLE;
+            end
+            
             default: state <= IDLE;
         endcase
     end
@@ -227,7 +243,7 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
     
     assign spi_data = (state == INIT) ? screen_init[step][7:0] :
                       (state == COLORCMD) ? color_cmds[7:0] : 
-                      (step == 0) ? color_r[15:8] : color_r[7:0];
+                      (step == 0) ? color_r[7:0] : color_r[15:8];
 
 
 endmodule
