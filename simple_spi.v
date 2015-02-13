@@ -14,7 +14,7 @@ module simple_spi #(
     input [7:0] data_in
 );
 
-reg [2:0] bit = 2'b0;
+reg [2:0] dbit = 2'b0;
 reg [7:0] shift_reg;
 reg [CLK_DIV_BITS-1:0] cnt;
 
@@ -27,13 +27,13 @@ always @(posedge clk) begin
             sclk <= ~sclk;
             if(sclk) begin // falling edge, update data bit
                 shift_reg <= {shift_reg[6:0], 1'b0};
-                bit <= bit-1;
-                if(bit == 0) done <= 1'b1;
+                dbit <= dbit-1;
+                if(dbit == 0) done <= 1'b1;
             end
         end else
             cnt <= cnt+1;
     end else if(go) begin
-        bit <= 3'd7;
+        dbit <= 3'd7;
         shift_reg <= data_in;
         done <= 1'b0;
         cnt <= 0;

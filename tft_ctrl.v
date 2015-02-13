@@ -68,18 +68,19 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
         colordone = 1'b0;
         color_cmds = 0;
         case(step)
-            0: color_cmds = {1'b0, `ILI9341_CASET};
-            1: color_cmds = {1'b1, xstart_r[15:8]}; 
-            2: color_cmds = {1'b1, xstart_r[7:0]}; 
-            3: color_cmds = {1'b1, xend_r[15:8]}; 
-            4: color_cmds = {1'b1, xend_r[7:0]}; 
-            5: color_cmds = {1'b0, `ILI9341_PASET};
-            6: color_cmds = {1'b1, ystart_r[15:8]}; 
-            7: color_cmds = {1'b1, ystart_r[7:0]}; 
-            8: color_cmds = {1'b1, yend_r[15:8]}; 
-            9: color_cmds = {1'b1, yend_r[7:0]}; 
-           10: color_cmds = {1'b0, `ILI9341_RAMWR}; 
-           11: colordone = 1'b1;
+            0:  color_cmds = {1'b0, `ILI9341_CASET};
+            1:  color_cmds = {1'b1, xstart_r[15:8]}; 
+            2:  color_cmds = {1'b1, xstart_r[7:0]}; 
+            3:  color_cmds = {1'b1, xend_r[15:8]}; 
+            4:  color_cmds = {1'b1, xend_r[7:0]}; 
+            5:  color_cmds = {1'b0, `ILI9341_PASET};
+            6:  color_cmds = {1'b1, ystart_r[15:8]}; 
+            7:  color_cmds = {1'b1, ystart_r[7:0]}; 
+            8:  color_cmds = {1'b1, yend_r[15:8]}; 
+            9:  color_cmds = {1'b1, yend_r[7:0]}; 
+            10: color_cmds = {1'b0, `ILI9341_RAMWR}; 
+            11: colordone = 1'b1;
+            default: ;
         endcase
     end
     
