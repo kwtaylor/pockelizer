@@ -57,7 +57,8 @@ module pockelizer (
         .yend(yend),
         
         .curx(),
-        .cury()
+        .cury(),
+        .cnext()
     );
 
     reg [3:0] step = 4'b0;
