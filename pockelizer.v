@@ -36,7 +36,7 @@ module pockelizer (
     wire [15:0] yend;
     wire [15:0] color;
     
-    assign {color, xstart, xend, ystart, yend} = drawcmd;
+    assign {color, xstart, ystart, xend, yend} = drawcmd;
     
     tft_ctrl /*#(.DLY_WIDTH(5))*/ tctl (
         .clk(clk),
@@ -64,15 +64,15 @@ module pockelizer (
     );
     
     
-    localparam INIT1   = 4'd0;
-    localparam INIT2   = 4'd1;
-    localparam INIT3   = 4'd2;
-    localparam DRAW1   = 4'd3;
-    localparam DRAW2   = 4'd4;
-    localparam DRAW3   = 4'd5;
-    localparam DRAW4   = 4'd6;
-    localparam DRAW5   = 4'd7;
-    localparam MOVE1   = 4'd8;
+    localparam INIT1      = 4'd0;
+    localparam INIT2      = 4'd1;
+    localparam INIT3      = 4'd2;
+    localparam DRAWSTART  = 4'd3;
+    localparam DRAWBIT0   = 4'd4;
+    localparam DRAWBIT1   = 4'd5;
+    localparam DRAWVERT   = 4'd6;
+    localparam NEXTBIT    = 4'd7;
+    localparam HALT       = 4'd8;
 
     reg [3:0] step = INIT1;
     reg [15:0] ctr = 16'b0;
@@ -87,8 +87,33 @@ module pockelizer (
     reg [15:0] xpos;
     reg [15:0] ypos;
     
-    reg xdir;
-    reg ydir;
+    reg [4:0] bitstep;
+    reg [3:0] wave;
+    
+    localparam TOPOFS  = 16'd10; // offset from top
+    localparam LEFTOFS = 16'd10; // offset from left
+    localparam WHEIGHT = 16'd20; // height of one wave
+    localparam WWIDTH  = 16'd20; // width of one step
+    localparam WVSTEP  = 16'd50; // distance to next waveform down
+    localparam WHSTEPS = 15; // number of bit steps per wave
+    localparam WAVES   = 5; // number of waves
+    
+    wire [WHSTEPS-1:0] wavedat [WAVES-1:0];
+    
+    assign wavedat[0] = 15'b010101010101010;
+    assign wavedat[1] = 15'b111110000011111;
+    assign wavedat[2] = 15'b001011101001101;
+    assign wavedat[3] = 15'b111000101100111;
+    assign wavedat[4] = 15'b000111010011000;
+    
+    // screen oriented sideways
+    //
+    //      <--width-->   ^
+    //  ^                 height
+    //  |
+    //  x
+    //  (0,0) y--->
+    ////////////////////////////
     
     always @(posedge clk) begin
         clr_ctr <= 1'b1;
@@ -107,49 +132,62 @@ module pockelizer (
                 end
             end
             INIT3: begin // wait initialize
-                xpos <= 16'd10;
-                ypos <= 16'd10;
-                xdir = 0;
-                ydir = 0;
                 if(tft_done) begin
-                    step <= DRAW1;
+                    step <= DRAWSTART;
                 end
             end
             
-            // drawing program       R,    G,    B, xstart,     xend,         ystart,       yend
-            DRAW1: begin drawcmd <= {5'd15,6'd31,5'd00, xpos,        xpos+16'd90, ypos,         ypos+16'd20};  if(tft_done) step<=step+1; else draw <= 1'b1; end
-            DRAW2: begin drawcmd <= {5'd15,6'd00,5'd15, xpos+16'd30, xpos+16'd50, ypos+16'd20,  ypos+16'd90};  if(tft_done) step<=step+1; else draw <= 1'b1; end
-            DRAW3: begin drawcmd <= {5'd00,6'd63,5'd00, xpos,        xpos+16'd90, ypos+16'd90,  ypos+16'd110}; if(tft_done) step<=step+1; else draw <= 1'b1; end
-            DRAW4: begin drawcmd <= {5'd00,6'd31,5'd15, xpos,        xpos+16'd90, ypos+16'd140, ypos+16'd160}; if(tft_done) step<=MOVE1;  else draw <= 1'b1; end
+            // drawing program               R,    G,    B, xstart,   ystart,           xend,       yend
+            DRAWSTART: begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,        16'd239,    16'd319};  // black background
+                if(tft_done) begin
+                    xpos <= 16'd239 - TOPOFS;
+                    ypos <= LEFTOFS;
+                    bitstep <= 0;
+                    wave <= 0;
+                    if(wavedat[0][0]) step<=DRAWBIT1;
+                    else step<=DRAWBIT0;
+                end else draw <= 1'b1;
+            end
+                         
+            DRAWBIT0:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos-WHEIGHT, ypos,  xpos-WHEIGHT, ypos+WWIDTH};  // horizontal line
+                if(tft_done) step <= NEXTBIT;
+                else draw <= 1'b1;
+            end
             
-            // move position
-            MOVE1: begin
-                if(xpos == 240-90-1) begin
-                    xpos <= xpos - 1;
-                    xdir <= 1;
-                end else if (xpos == 0) begin
-                    xpos <= xpos + 1;
-                    xdir <= 0;
-                end else if (xdir) begin
-                    xpos <= xpos - 1;
-                end else begin
-                    xpos <= xpos + 1;
+            DRAWBIT1:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos,         ypos,  xpos,         ypos+WWIDTH};  // horizontal line
+                if(tft_done) step <= NEXTBIT;
+                else draw <= 1'b1;
+            end
+            
+            DRAWVERT:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos-WHEIGHT, ypos,  xpos,         ypos}; // vertical line
+                if(tft_done) begin 
+                    if(wavedat[wave][bitstep]) step<=DRAWBIT1;
+                    else step<=DRAWBIT0;
+                end else draw <= 1'b1;
+            end
+            
+            NEXTBIT: begin 
+                if(bitstep == WHSTEPS-1) begin
+                    if(wave == WAVES-1) step <= HALT;
+                    else begin // next wave
+                        xpos <= xpos - WVSTEP;
+                        ypos <= LEFTOFS;
+                        bitstep <= 0;
+                        wave <= wave+1;
+                        if(wavedat[wave+1][0]) step<=DRAWBIT1;
+                        else step<=DRAWBIT0;
+                    end
+                end else begin // next bit of wave
+                    ypos <= ypos + WWIDTH;
+                    bitstep <= bitstep+1;
+                    if(wavedat[wave][bitstep] != wavedat[wave][bitstep+1]) step<=DRAWVERT;
+                    else if(wavedat[wave][bitstep]) step<=DRAWBIT1;
+                    else step<=DRAWBIT0;
                 end
-                
-                if(ypos == 320-160-1) begin
-                    ypos <= ypos - 1;
-                    ydir <= 1;
-                end else if (ypos == 0) begin
-                    ypos <= ypos + 1;
-                    ydir <= 0;
-                end else if (ydir) begin
-                    ypos <= ypos - 1;
-                end else begin
-                    ypos <= ypos + 1;
-                end
-                
-                step <= DRAW1;
-            end 
+            end
+            
+            // done (for NOW)
+            HALT: step <= HALT;
             
             default: begin 
                 draw <= 1'b0; 

@@ -179,11 +179,13 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
                 cury <= ystart_r;
                 
                 if(colordone) begin
-                    state <= COLORDAT;
-                    spi_go <= 1'b1;
-                    color_r <= color;
-                    cnext <= 1'b1;
-                    step <= 0;
+                    if(spi_done) begin
+                        state <= COLORDAT;
+                        spi_go <= 1'b1;
+                        color_r <= color;
+                        cnext <= 1'b1;
+                        step <= 0;
+                    end
                 end else begin // handshake and increment
                     if(spi_done && !spi_go) begin
                         spi_go <= 1'b1;
@@ -216,7 +218,7 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
                             color_r <= color;
                             cnext <= 1'b1;
                             step <= 0;
-                        end else step = step + 1;
+                        end else step <= step + 1;
                         spi_go <= 1'b0;
                     end
                 end
@@ -243,7 +245,7 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
     
     assign spi_data = (state == INIT) ? screen_init[step][7:0] :
                       (state == COLORCMD) ? color_cmds[7:0] : 
-                      (step == 0) ? color_r[7:0] : color_r[15:8];
+                      (step == 0) ? color_r[15:8] : color_r[7:0];
 
 
 endmodule
