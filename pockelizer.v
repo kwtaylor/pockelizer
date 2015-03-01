@@ -4,6 +4,8 @@ module pockelizer (
     input clk,
     //output [5:1] led,
     
+    input [5:0] logic_in, // 0 is the clock
+    
     // SPI 
     output SCLK,
     output MOSI,
@@ -72,7 +74,8 @@ module pockelizer (
     localparam DRAWBIT1   = 4'd5;
     localparam DRAWVERT   = 4'd6;
     localparam NEXTBIT    = 4'd7;
-    localparam HALT       = 4'd8;
+    localparam DOCAP      = 4'd8;
+
 
     reg [3:0] step = INIT1;
     reg [15:0] ctr = 16'b0;
@@ -95,16 +98,55 @@ module pockelizer (
     localparam WHEIGHT = 16'd20; // height of one wave
     localparam WWIDTH  = 16'd20; // width of one step
     localparam WVSTEP  = 16'd50; // distance to next waveform down
-    localparam WHSTEPS = 15; // number of bit steps per wave
+    localparam WHSTEPS = 4'd15; // number of bit steps per wave
+    localparam POSOFFS = 4'd3; // offset of capture edge from start
     localparam WAVES   = 5; // number of waves
     
-    wire [WHSTEPS-1:0] wavedat [WAVES-1:0];
+    reg [WHSTEPS-1:0] wavedat [WAVES-1:0];
     
-    assign wavedat[0] = 15'b010101010101010;
-    assign wavedat[1] = 15'b111110000011111;
-    assign wavedat[2] = 15'b001011101001101;
-    assign wavedat[3] = 15'b111000101100111;
-    assign wavedat[4] = 15'b000111010011000;
+    //assign wavedat[0] = 15'b010101010101010;
+    //assign wavedat[1] = 15'b111110000011111;
+    //assign wavedat[2] = 15'b001011101001101;
+    //assign wavedat[3] = 15'b111000101100111;
+    //assign wavedat[4] = 15'b000111010011000;
+    
+    reg docap = 1'b0;
+    reg startcap, startcap_rr, startcap_r;
+    reg capdone, capdone_rr, capdone_r;
+    reg [3:0] cappos = 4'b0;
+    
+    
+    always @(posedge logic_in[0]) begin
+        // running capture buffer
+        if(cappos < WHSTEPS) begin
+            wavedat[0][WHSTEPS-1] <= logic_in[1]; wavedat[0][WHSTEPS-2:0] <= wavedat[0][WHSTEPS-1:1];
+            wavedat[1][WHSTEPS-1] <= logic_in[2]; wavedat[1][WHSTEPS-2:0] <= wavedat[1][WHSTEPS-1:1];
+            wavedat[2][WHSTEPS-1] <= logic_in[3]; wavedat[2][WHSTEPS-2:0] <= wavedat[2][WHSTEPS-1:1];
+            wavedat[3][WHSTEPS-1] <= logic_in[4]; wavedat[3][WHSTEPS-2:0] <= wavedat[3][WHSTEPS-1:1];
+            wavedat[4][WHSTEPS-1] <= logic_in[5]; wavedat[4][WHSTEPS-2:0] <= wavedat[4][WHSTEPS-1:1];
+            if(docap) cappos <= cappos + 1'b1;
+            capdone <= 1'b0;
+        end else begin
+            capdone <= 1'b1;
+        end
+        
+        if(startcap_r) begin
+            // start capture at next edge
+            if(logic_in[1] != wavedat[0][WHSTEPS-1]) begin
+                docap <= 1'b1;
+            end
+            if(!docap) cappos <= POSOFFS;
+        end else begin
+            // reset things
+            docap <= 1'b0;
+            capdone <= 1'b0;
+            // don't reset cappos yet, or else buffer will be unstable for drawing program
+        end
+        
+        //synchronize
+         startcap_r <= startcap_rr;
+         startcap_rr <= startcap;
+    end
     
     // screen oriented sideways
     //
@@ -119,6 +161,11 @@ module pockelizer (
         clr_ctr <= 1'b1;
         init_tft <= 1'b0;
         draw <= 1'b0;
+        startcap <= 1'b0;
+        
+        // synchronize
+        capdone_rr <= capdone;
+        capdone_r <= capdone_rr;
         
         case(step)
             INIT1: begin // wait for counter to clear
@@ -133,8 +180,13 @@ module pockelizer (
             end
             INIT3: begin // wait initialize
                 if(tft_done) begin
-                    step <= DRAWSTART;
+                    step <= DOCAP;
                 end
+            end
+            
+            DOCAP: begin
+                startcap <= 1'b1;
+                if(capdone_r) step <= DRAWSTART;
             end
             
             // drawing program               R,    G,    B, xstart,   ystart,           xend,       yend
@@ -168,7 +220,7 @@ module pockelizer (
             
             NEXTBIT: begin 
                 if(bitstep == WHSTEPS-1) begin
-                    if(wave == WAVES-1) step <= HALT;
+                    if(wave == WAVES-1) step <= DOCAP;
                     else begin // next wave
                         xpos <= xpos - WVSTEP;
                         ypos <= LEFTOFS;
@@ -187,7 +239,7 @@ module pockelizer (
             end
             
             // done (for NOW)
-            HALT: step <= HALT;
+            //HALT: step <= HALT;
             
             default: begin 
                 draw <= 1'b0; 
