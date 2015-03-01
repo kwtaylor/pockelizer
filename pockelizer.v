@@ -75,6 +75,7 @@ module pockelizer (
     localparam DRAWVERT   = 4'd6;
     localparam NEXTBIT    = 4'd7;
     localparam DOCAP      = 4'd8;
+    localparam DOCAP0     = 4'd9;
 
 
     reg [3:0] step = INIT1;
@@ -180,8 +181,12 @@ module pockelizer (
             end
             INIT3: begin // wait initialize
                 if(tft_done) begin
-                    step <= DOCAP;
+                    step <= DOCAP0;
                 end
+            end
+            
+            DOCAP0: begin
+                if(!capdone_r) step <= DOCAP;
             end
             
             DOCAP: begin
@@ -220,7 +225,7 @@ module pockelizer (
             
             NEXTBIT: begin 
                 if(bitstep == WHSTEPS-1) begin
-                    if(wave == WAVES-1) step <= DOCAP;
+                    if(wave == WAVES-1) step <= DOCAP0;
                     else begin // next wave
                         xpos <= xpos - WVSTEP;
                         ypos <= LEFTOFS;
