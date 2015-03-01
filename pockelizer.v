@@ -119,29 +119,28 @@ module pockelizer (
     
     always @(posedge logic_in[0]) begin
         // running capture buffer
-        if(cappos < WHSTEPS) begin
-            wavedat[0][WHSTEPS-1] <= logic_in[1]; wavedat[0][WHSTEPS-2:0] <= wavedat[0][WHSTEPS-1:1];
-            wavedat[1][WHSTEPS-1] <= logic_in[2]; wavedat[1][WHSTEPS-2:0] <= wavedat[1][WHSTEPS-1:1];
-            wavedat[2][WHSTEPS-1] <= logic_in[3]; wavedat[2][WHSTEPS-2:0] <= wavedat[2][WHSTEPS-1:1];
-            wavedat[3][WHSTEPS-1] <= logic_in[4]; wavedat[3][WHSTEPS-2:0] <= wavedat[3][WHSTEPS-1:1];
-            wavedat[4][WHSTEPS-1] <= logic_in[5]; wavedat[4][WHSTEPS-2:0] <= wavedat[4][WHSTEPS-1:1];
-            if(docap) cappos <= cappos + 1'b1;
-            capdone <= 1'b0;
-        end else begin
-            capdone <= 1'b1;
-        end
-        
         if(startcap_r) begin
+            if(cappos < WHSTEPS) begin
+                wavedat[0][WHSTEPS-1] <= logic_in[1]; wavedat[0][WHSTEPS-2:0] <= wavedat[0][WHSTEPS-1:1];
+                wavedat[1][WHSTEPS-1] <= logic_in[2]; wavedat[1][WHSTEPS-2:0] <= wavedat[1][WHSTEPS-1:1];
+                wavedat[2][WHSTEPS-1] <= logic_in[3]; wavedat[2][WHSTEPS-2:0] <= wavedat[2][WHSTEPS-1:1];
+                wavedat[3][WHSTEPS-1] <= logic_in[4]; wavedat[3][WHSTEPS-2:0] <= wavedat[3][WHSTEPS-1:1];
+                wavedat[4][WHSTEPS-1] <= logic_in[5]; wavedat[4][WHSTEPS-2:0] <= wavedat[4][WHSTEPS-1:1];
+                if(docap) cappos <= cappos + 1'b1;
+                capdone <= 1'b0;
+            end else begin
+                capdone <= 1'b1;
+            end
+            
             // start capture at next edge
             if(logic_in[1] != wavedat[0][WHSTEPS-1]) begin
                 docap <= 1'b1;
             end
-            if(!docap) cappos <= POSOFFS;
         end else begin
             // reset things
             docap <= 1'b0;
             capdone <= 1'b0;
-            // don't reset cappos yet, or else buffer will be unstable for drawing program
+            cappos <= POSOFFS;
         end
         
         //synchronize
