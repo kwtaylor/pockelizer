@@ -21,11 +21,66 @@ module pockelizer (
     // uSD card
     output SD_CSn
 );
-    
+
     // disable all except TFT for now
     assign TS_CSn = 1'b1;
     assign SD_CSn = 1'b1;
+
+    //logo!
+    reg uselogo = 1'b0;
+    reg [8:0] logopos = 16*20-1;
+    wire [(16*20)*16-1:0] logo;
+
+    assign logo = 
+    {16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h07E0,16'hAFE5,16'hFFE0,16'hFD20,16'hF800,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'hF800,16'hF81F,16'h001F,16'h07FF,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'hFFE0,16'h0000,16'hF800,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'hFD20,16'h0000,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,
+     16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'hAFE5,16'hFFE0,16'hFD20,16'h0000,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'hF800,16'hF81F,16'h001F,16'h07FF,16'h0000,16'h0000,16'h0000,16'h07E0,16'h0000,16'h0000,16'h0000,16'hF800,16'h0000,16'h0000,
+     16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'hAFE5,16'hFFE0,16'hFD20,16'h0000,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'hF800,16'h0000,16'h0000,16'h07FF,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'h0000,16'hF81F,16'h0000,16'h07FF,16'h0000,16'h0000,16'h0000,16'h0000,16'hAFE5,16'hFFE0,16'hFD20,16'h0000,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'h0000,16'h0000,16'h001F,16'h07FF,16'h0000,16'h0000,16'h0000,16'h07E0,16'h0000,16'h0000,16'h0000,16'hF800,16'h0000,16'h0000,
+     16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h07E0,16'h0000,16'h0000,16'h0000,16'hF800,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'hF800,16'hF81F,16'h001F,16'h07FF,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'h0000,16'hF81F,16'h0000,16'h07FF,16'h0000,16'h0000,16'h0000,16'h07E0,16'hAFE5,16'hFFE0,16'hFD20,16'hF800,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'h0000,16'h0000,16'h0000,16'h07FF,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'hFFE0,16'h0000,16'h0000,16'h0000,16'h0000,
+     16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h07E0,16'hAFE5,16'h0000,16'hFD20,16'hF800,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'hF800,16'hF81F,16'h001F,16'h07FF,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,
+     16'h0000,16'h0000,16'h0000,16'hF81F,16'h0000,16'h07FF,16'h0000,16'h0000,16'h0000,16'h07E0,16'hAFE5,16'hFFE0,16'hFD20,16'hF800,16'h0000,16'h0000,
+     16'h0000,16'hFD20,16'hF800,16'h0000,16'h001F,16'h0000,16'h0000,16'h0000,16'h0000,16'h07E0,16'h0000,16'hFFE0,16'h0000,16'hF800,16'h0000,16'h0000,
+     16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h07E0,16'h0000,16'h0000,16'h0000,16'hF800,16'h0000,16'h0000,
+     16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000,16'h0000};
+
+     
+    wire cnext;
+    reg [3:0] xscale = 4'b0;
+    reg [3:0] yscale = 4'b0;
     
+    always @(posedge clk) begin
+        if(uselogo) begin
+            if(cnext) begin
+                xscale <= xscale + 1'b1;
+                if(xscale == 4'd14) begin
+                    xscale <= 4'b0;
+                    logopos <= logopos - 1'b1;
+                    if((logopos & 4'hF) == 4'h0) begin
+                        yscale <= yscale + 1'b1;
+                        if(~&yscale)
+                            logopos <= logopos + 4'd15; // wrap around 16-pixel row
+                    end
+                end
+            end
+        end else begin
+            logopos <= 16*20-1;
+            xscale <= 4'b0;
+            yscale <= 4'b0;
+        end
+    
+    end
+
+    // tft control!
     wire tft_busy;
     wire tft_done;
     reg init_tft;
@@ -54,7 +109,7 @@ module pockelizer (
         .busy(tft_busy),
         .done(tft_done),
         
-        .color(color),
+        .color(uselogo ? logo[({4'b0,logopos}<<4) +: 16] : color),
         .xstart(xstart),
         .xend(xend),
         .ystart(ystart),
@@ -62,10 +117,11 @@ module pockelizer (
         
         .curx(),
         .cury(),
-        .cnext()
+        .cnext(cnext)
     );
     
     
+    // state machine & capture logic!
     localparam INIT1      = 4'd0;
     localparam INIT2      = 4'd1;
     localparam INIT3      = 4'd2;
@@ -76,6 +132,7 @@ module pockelizer (
     localparam NEXTBIT    = 4'd7;
     localparam DOCAP      = 4'd8;
     localparam DOCAP0     = 4'd9;
+    localparam DRAWLOGO   = 4'd10;
 
 
     reg [3:0] step = INIT1;
@@ -156,12 +213,15 @@ module pockelizer (
     //  x
     //  (0,0) y--->
     ////////////////////////////
+              
+                   
     
     always @(posedge clk) begin
         clr_ctr <= 1'b1;
         init_tft <= 1'b0;
         draw <= 1'b0;
         startcap <= 1'b0;
+        uselogo <= 1'b0;
         
         // synchronize
         capdone_rr <= capdone;
@@ -180,8 +240,16 @@ module pockelizer (
             end
             INIT3: begin // wait initialize
                 if(tft_done) begin
-                    step <= DOCAP0;
+                    step <= DRAWLOGO;
                 end
+            end
+            
+            // drawing program               color n/a      xstart,   ystart,           xend,       yend
+            DRAWLOGO : begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,        16'd239,    16'd319};  // logo background
+                uselogo <= 1'b1;
+                if(tft_done) begin
+                    step <= DOCAP0;
+                end else draw <= 1'b1;
             end
             
             DOCAP0: begin
