@@ -148,18 +148,19 @@ module pockelizer (
     reg [15:0] xpos;
     reg [15:0] ypos;
     
-    reg [4:0] bitstep;
-    reg [3:0] wave;
-    
     localparam TOPOFS  = 16'd10; // offset from top
     localparam LEFTOFS = 16'd10; // offset from left
     localparam WHEIGHT = 16'd20; // height of one wave
-    localparam WWIDTH  = 16'd20; // width of one step
+    localparam WWIDTH  = 16'd5; // width of one step
     localparam WVSTEP  = 16'd50; // distance to next waveform down
-    localparam WHSTEPS = 4'd15; // number of bit steps per wave
+    localparam STEP_SIZE = 6; // width of regs needed for max steps
+    localparam WHSTEPS = 6'd60; // number of bit steps per wave
     localparam POSOFFS = 4'd3; // offset of capture edge from start
     localparam WAVES   = 5; // number of waves
     
+    reg [STEP_SIZE-1:0] bitstep;
+    reg [3:0] wave;
+
     reg [WHSTEPS-1:0] wavedat [WAVES-1:0];
     
     //assign wavedat[0] = 15'b010101010101010;
@@ -171,7 +172,7 @@ module pockelizer (
     reg docap = 1'b0;
     reg startcap, startcap_rr, startcap_r;
     reg capdone, capdone_rr, capdone_r;
-    reg [3:0] cappos = 4'b0;
+    reg [STEP_SIZE-1:0] cappos = 4'b0;
     
     
     always @(posedge logic_in[0]) begin
