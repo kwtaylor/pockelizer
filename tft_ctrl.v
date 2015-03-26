@@ -1,5 +1,6 @@
 module tft_ctrl #( parameter DLY_WIDTH = 23 )(
     input clk,
+    input arstn,
     
     //spi interface
     output sclk,
@@ -40,6 +41,7 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
     
     simple_spi spi (
         .clk(clk),
+        .arstn(arstn),
         .sclk(sclk),
         .mosi(mosi),
         .go(spi_go),
@@ -107,130 +109,143 @@ module tft_ctrl #( parameter DLY_WIDTH = 23 )(
         
     wire max_cnt = &dly_cnt;
     
-    always @(posedge clk) begin
-        //defaults
-        csn <= 1'b1;
-        busy <= 1'b0;
-        done <= 1'b0;
-        cnt_clr <= 1'b1;
-        cnext <= 1'b0;
-        
-        case(state)
-            IDLE: begin
-                step <= 0;
-                curx <= 0;
-                cury <= 0;
-                spi_go <= 1'b0;
+    always @(posedge clk or negedge arstn) begin
+        if(~arstn) begin
+            csn <= 1'b1;
+            busy <= 1'b0;
+            done <= 1'b0;
+            cnt_clr <= 1'b1;
+            cnext <= 1'b0;
+            state <= IDLE;
+            step <= 0;
+            curx <= 0;
+            cury <= 0;
+            spi_go <= 1'b0;
+        end else begin
+            //defaults
+            csn <= 1'b1;
+            busy <= 1'b0;
+            done <= 1'b0;
+            cnt_clr <= 1'b1;
+            cnext <= 1'b0;
+            
+            case(state)
+                IDLE: begin
+                    step <= 0;
+                    curx <= 0;
+                    cury <= 0;
+                    spi_go <= 1'b0;
+                    
+                    if(init) begin
+                        state <= INIT;
+                        spi_go <= 1'b1;
+                        busy <= 1'b1;
+                    end else if(draw) begin
+                        state <= COLORCMD;
+                        spi_go <= 1'b1;
+                        busy <= 1'b1;
+                        xstart_r <= xstart;
+                        ystart_r <= ystart;
+                        xend_r <= xend;
+                        yend_r <= yend;
+                    end
+                end
                 
-                if(init) begin
-                    state <= INIT;
-                    spi_go <= 1'b1;
+                INIT: begin
+                    csn <= 1'b0;
                     busy <= 1'b1;
-                end else if(draw) begin
-                    state <= COLORCMD;
-                    spi_go <= 1'b1;
+                    
+                    if(initdone) begin
+                        if(spi_done) begin
+                            state <= DONEDLY;
+                            done <= 1'b1;
+                        end
+                    end else begin // handshake and increment
+                        if(spi_done && !spi_go) begin
+                            spi_go <= 1'b1;
+                        end else if(spi_go && !spi_done) begin 
+                            step <= step + 1;
+                            spi_go <= 1'b0;
+                            if(dly) state <= INITDLY;
+                        end
+                    end
+                end
+                
+                INITDLY: begin
+                    csn <= 1'b0;
                     busy <= 1'b1;
-                    xstart_r <= xstart;
-                    ystart_r <= ystart;
-                    xend_r <= xend;
-                    yend_r <= yend;
-                end
-            end
-            
-            INIT: begin
-                csn <= 1'b0;
-                busy <= 1'b1;
-                
-                if(initdone) begin
-                    if(spi_done) begin
-                        state <= DONEDLY;
-                        done <= 1'b1;
-                    end
-                end else begin // handshake and increment
-                    if(spi_done && !spi_go) begin
+                    spi_go <= 1'b0;
+                    
+                    if(spi_done) cnt_clr <= 1'b0;
+                    
+                    if(max_cnt) begin
+                        state <= INIT;
                         spi_go <= 1'b1;
-                    end else if(spi_go && !spi_done) begin 
-                        step <= step + 1;
-                        spi_go <= 1'b0;
-                        if(dly) state <= INITDLY;
                     end
+                
                 end
-            end
-            
-            INITDLY: begin
-                csn <= 1'b0;
-                busy <= 1'b1;
-                spi_go <= 1'b0;
                 
-                if(spi_done) cnt_clr <= 1'b0;
-                
-                if(max_cnt) begin
-                    state <= INIT;
-                    spi_go <= 1'b1;
-                end
-            
-            end
-            
-            COLORCMD: begin
-                csn <= 1'b0;
-                busy <= 1'b1;
-                
-                curx <= xstart_r;
-                cury <= ystart_r;
-                
-                if(colordone) begin
-                    if(spi_done) begin
-                        state <= COLORDAT;
-                        spi_go <= 1'b1;
-                        color_r <= color;
-                        cnext <= 1'b1;
-                        step <= 0;
-                    end
-                end else begin // handshake and increment
-                    if(spi_done && !spi_go) begin
-                        spi_go <= 1'b1;
-                    end else if(spi_go && !spi_done) begin 
-                        step <= step + 1;
-                        spi_go <= 1'b0;
-                    end
-                end
-            end
-            
-            COLORDAT: begin
-                csn <= 1'b0;
-                busy <= 1'b1;
-                
-                if(cury > yend_r) begin
-                    if(spi_done) begin
-                        state <= DONEDLY;
-                        done <= 1'b1;
-                    end
-                end else begin // handshake and increment
-                    if(spi_done && !spi_go) begin
-                        spi_go <= 1'b1;
-                    end else if(spi_go && !spi_done) begin 
-                        if(step == 1) begin
-                            curx <= curx + 1;
-                            if(curx == xend_r) begin
-                                curx <= xstart_r;
-                                cury <= cury + 1;
-                            end
+                COLORCMD: begin
+                    csn <= 1'b0;
+                    busy <= 1'b1;
+                    
+                    curx <= xstart_r;
+                    cury <= ystart_r;
+                    
+                    if(colordone) begin
+                        if(spi_done) begin
+                            state <= COLORDAT;
+                            spi_go <= 1'b1;
                             color_r <= color;
                             cnext <= 1'b1;
                             step <= 0;
-                        end else step <= step + 1;
-                        spi_go <= 1'b0;
+                        end
+                    end else begin // handshake and increment
+                        if(spi_done && !spi_go) begin
+                            spi_go <= 1'b1;
+                        end else if(spi_go && !spi_done) begin 
+                            step <= step + 1;
+                            spi_go <= 1'b0;
+                        end
                     end
                 end
-            end
-            
-            DONEDLY: begin
-                spi_go <= 1'b0;
-                state <= IDLE;
-            end
-            
-            default: state <= IDLE;
-        endcase
+                
+                COLORDAT: begin
+                    csn <= 1'b0;
+                    busy <= 1'b1;
+                    
+                    if(cury > yend_r) begin
+                        if(spi_done) begin
+                            state <= DONEDLY;
+                            done <= 1'b1;
+                        end
+                    end else begin // handshake and increment
+                        if(spi_done && !spi_go) begin
+                            spi_go <= 1'b1;
+                        end else if(spi_go && !spi_done) begin 
+                            if(step == 1) begin
+                                curx <= curx + 1;
+                                if(curx == xend_r) begin
+                                    curx <= xstart_r;
+                                    cury <= cury + 1;
+                                end
+                                color_r <= color;
+                                cnext <= 1'b1;
+                                step <= 0;
+                            end else step <= step + 1;
+                            spi_go <= 1'b0;
+                        end
+                    end
+                end
+                
+                DONEDLY: begin
+                    spi_go <= 1'b0;
+                    state <= IDLE;
+                end
+                
+                default: state <= IDLE;
+            endcase
+        end
     end
     
     //////////////////////////////////

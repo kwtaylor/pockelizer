@@ -3,6 +3,7 @@ module simple_spi #(
     parameter CLK_DIV_BITS = 2
 ) (
     input clk,
+    input arstn,
     
     // chip select is controlled externally
     // no read right now, only write
@@ -20,8 +21,12 @@ reg [CLK_DIV_BITS-1:0] cnt;
 
 assign mosi = shift_reg[7];
 
-always @(posedge clk) begin
-    if(!done) begin
+always @(posedge clk or negedge arstn) begin
+    if(~arstn) begin
+        done <= 1'b1;
+        dbit <= 2'b0;
+        shift_reg <= 8'b0;
+    end else if(!done) begin
         if(cnt == CLK_DIV) begin
             cnt <= 0;
             sclk <= ~sclk;

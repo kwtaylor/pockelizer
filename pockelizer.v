@@ -2,6 +2,7 @@
 
 module pockelizer (
     input clk,
+    input arstn,
     //output [5:1] led,
     
     input [5:0] logic_in, // 0 is the clock
@@ -19,16 +20,49 @@ module pockelizer (
     output TS_CSn,
     
     // uSD card
-    output SD_CSn
+    output SD_CSn, 
+    
+    // Capacative touchscreen (i2c)
+    inout scl,
+    inout sda
 );
 
     // disable all except TFT for now
     assign TS_CSn = 1'b1;
     assign SD_CSn = 1'b1;
+    
+    // arst sync
+    reg arstn_sync, arstn_sync_r;
+    
+    always @(posedge clk or negedge arstn) begin
+        if(!arstn) begin
+            arstn_sync <= 1'b0;
+            arstn_sync_r <= 1'b0;
+        end else begin
+            arstn_sync_r <= 1'b1;
+            arstn_sync <= arstn_sync_r;
+        end
+    end
+    
+    // touch screen control
+    
+    wire touch;
+    
+    touch_ctrl tctrl (
+        .clk(clk),
+        .arstn(arstn_sync),
+        
+        .touch(touch),
+        .touchx(),
+        .touchy(),
+        
+        .scl(scl),
+        .sda(sda)
+    );
 
     //logo!
     reg uselogo = 1'b0;
-    reg [8:0] logopos = 16*20-1;
+    reg [8:0] logopos;
     wire [(16*20)*16-1:0] logo;
 
     assign logo = 
@@ -97,6 +131,7 @@ module pockelizer (
     
     tft_ctrl /*#(.DLY_WIDTH(5))*/ tctl (
         .clk(clk),
+        .arstn(arstn_sync),
         
         .sclk(SCLK),
         .mosi(MOSI),
@@ -133,6 +168,7 @@ module pockelizer (
     localparam DOCAP      = 4'd8;
     localparam DOCAP0     = 4'd9;
     localparam DRAWLOGO   = 4'd10;
+    localparam WAITTOUCH  = 4'd11;
 
 
     reg [3:0] step = INIT1;
@@ -172,7 +208,7 @@ module pockelizer (
     reg docap = 1'b0;
     reg startcap, startcap_rr, startcap_r;
     reg capdone, capdone_rr, capdone_r;
-    reg [STEP_SIZE-1:0] cappos = 4'b0;
+    reg [STEP_SIZE-1:0] cappos;
     
     
     always @(posedge logic_in[0]) begin
@@ -217,108 +253,121 @@ module pockelizer (
               
                    
     
-    always @(posedge clk) begin
-        clr_ctr <= 1'b1;
-        init_tft <= 1'b0;
-        draw <= 1'b0;
-        startcap <= 1'b0;
-        uselogo <= 1'b0;
+    always @(posedge clk or negedge arstn_sync) begin
+        if(~arstn_sync) begin
+            clr_ctr <= 1'b1;
+            init_tft <= 1'b0;
+            draw <= 1'b0;
+            startcap <= 1'b0;
+            uselogo <= 1'b0;
+            step <= 0;
+        end else begin
+            clr_ctr <= 1'b1;
+            init_tft <= 1'b0;
+            draw <= 1'b0;
+            startcap <= 1'b0;
+            uselogo <= 1'b0;
         
-        // synchronize
-        capdone_rr <= capdone;
-        capdone_r <= capdone_rr;
-        
-        case(step)
-            INIT1: begin // wait for counter to clear
-                if(ctr == 0) step <= 1;
-            end
-            INIT2: begin // delay startup
-                clr_ctr <= 1'b0;
-                if(ctr_max) begin 
-                    step <= 2;
-                    init_tft <= 1'b1;
+            // synchronize
+            capdone_rr <= capdone;
+            capdone_r <= capdone_rr;
+            
+            case(step)
+                INIT1: begin // wait for counter to clear
+                    if(ctr == 0) step <= 1;
                 end
-            end
-            INIT3: begin // wait initialize
-                if(tft_done) begin
-                    step <= DRAWLOGO;
+                INIT2: begin // delay startup
+                    clr_ctr <= 1'b0;
+                    if(ctr_max) begin 
+                        step <= 2;
+                        init_tft <= 1'b1;
+                    end
                 end
-            end
-            
-            // drawing program               color n/a      xstart,   ystart,           xend,       yend
-            DRAWLOGO : begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,        16'd239,    16'd319};  // logo background
-                uselogo <= 1'b1;
-                if(tft_done) begin
-                    step <= DOCAP0;
-                end else draw <= 1'b1;
-            end
-            
-            DOCAP0: begin
-                if(!capdone_r) step <= DOCAP;
-            end
-            
-            DOCAP: begin
-                startcap <= 1'b1;
-                if(capdone_r) step <= DRAWSTART;
-            end
-            
-            // drawing program               R,    G,    B, xstart,   ystart,           xend,       yend
-            DRAWSTART: begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,        16'd239,    16'd319};  // black background
-                if(tft_done) begin
-                    xpos <= 16'd239 - TOPOFS;
-                    ypos <= LEFTOFS;
-                    bitstep <= 0;
-                    wave <= 0;
-                    if(wavedat[0][0]) step<=DRAWBIT1;
-                    else step<=DRAWBIT0;
-                end else draw <= 1'b1;
-            end
-                         
-            DRAWBIT0:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos-WHEIGHT, ypos,  xpos-WHEIGHT, ypos+WWIDTH};  // horizontal line
-                if(tft_done) step <= NEXTBIT;
-                else draw <= 1'b1;
-            end
-            
-            DRAWBIT1:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos,         ypos,  xpos,         ypos+WWIDTH};  // horizontal line
-                if(tft_done) step <= NEXTBIT;
-                else draw <= 1'b1;
-            end
-            
-            DRAWVERT:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos-WHEIGHT, ypos,  xpos,         ypos}; // vertical line
-                if(tft_done) begin 
-                    if(wavedat[wave][bitstep]) step<=DRAWBIT1;
-                    else step<=DRAWBIT0;
-                end else draw <= 1'b1;
-            end
-            
-            NEXTBIT: begin 
-                if(bitstep == WHSTEPS-1) begin
-                    if(wave == WAVES-1) step <= DOCAP0;
-                    else begin // next wave
-                        xpos <= xpos - WVSTEP;
+                INIT3: begin // wait initialize
+                    if(tft_done) begin
+                        step <= DRAWLOGO;
+                    end
+                end
+                
+                // drawing program               color n/a      xstart,   ystart,           xend,       yend
+                DRAWLOGO : begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,        16'd239,    16'd319};  // logo background
+                    uselogo <= 1'b1;
+                    if(tft_done) begin
+                        step <= WAITTOUCH;
+                    end else draw <= 1'b1;
+                end
+                
+                WAITTOUCH: begin
+                    if(touch) step <= DRAWSTART; // draw *something* on startup
+                end  
+                
+                DOCAP0: begin
+                    if(!capdone_r) step <= DOCAP;
+                end
+                
+                DOCAP: begin
+                    startcap <= 1'b1;
+                    if(capdone_r) step <= DRAWSTART;
+                end
+                
+                // drawing program               R,    G,    B, xstart,   ystart,           xend,       yend
+                DRAWSTART: begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,        16'd239,    16'd319};  // black background
+                    if(tft_done) begin
+                        xpos <= 16'd239 - TOPOFS;
                         ypos <= LEFTOFS;
                         bitstep <= 0;
-                        wave <= wave+1;
-                        if(wavedat[wave+1][0]) step<=DRAWBIT1;
+                        wave <= 0;
+                        if(wavedat[0][0]) step<=DRAWBIT1;
+                        else step<=DRAWBIT0;
+                    end else draw <= 1'b1;
+                end
+                             
+                DRAWBIT0:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos-WHEIGHT, ypos,  xpos-WHEIGHT, ypos+WWIDTH};  // horizontal line
+                    if(tft_done) step <= NEXTBIT;
+                    else draw <= 1'b1;
+                end
+                
+                DRAWBIT1:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos,         ypos,  xpos,         ypos+WWIDTH};  // horizontal line
+                    if(tft_done) step <= NEXTBIT;
+                    else draw <= 1'b1;
+                end
+                
+                DRAWVERT:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos-WHEIGHT, ypos,  xpos,         ypos}; // vertical line
+                    if(tft_done) begin 
+                        if(wavedat[wave][bitstep]) step<=DRAWBIT1;
+                        else step<=DRAWBIT0;
+                    end else draw <= 1'b1;
+                end
+                
+                NEXTBIT: begin 
+                    if(bitstep == WHSTEPS-1) begin
+                        if(wave == WAVES-1) step <= DOCAP0;
+                        else begin // next wave
+                            xpos <= xpos - WVSTEP;
+                            ypos <= LEFTOFS;
+                            bitstep <= 0;
+                            wave <= wave+1;
+                            if(wavedat[wave+1][0]) step<=DRAWBIT1;
+                            else step<=DRAWBIT0;
+                        end
+                    end else begin // next bit of wave
+                        ypos <= ypos + WWIDTH;
+                        bitstep <= bitstep+1;
+                        if(wavedat[wave][bitstep] != wavedat[wave][bitstep+1]) step<=DRAWVERT;
+                        else if(wavedat[wave][bitstep]) step<=DRAWBIT1;
                         else step<=DRAWBIT0;
                     end
-                end else begin // next bit of wave
-                    ypos <= ypos + WWIDTH;
-                    bitstep <= bitstep+1;
-                    if(wavedat[wave][bitstep] != wavedat[wave][bitstep+1]) step<=DRAWVERT;
-                    else if(wavedat[wave][bitstep]) step<=DRAWBIT1;
-                    else step<=DRAWBIT0;
                 end
-            end
-            
-            // done (for NOW)
-            //HALT: step <= HALT;
-            
-            default: begin 
-                draw <= 1'b0; 
-                step <= INIT1; 
-            end
-        endcase
+                
+                // done (for NOW)
+                //HALT: step <= HALT;
+                
+                default: begin 
+                    draw <= 1'b0; 
+                    step <= INIT1; 
+                end
+            endcase
+        end
     end
 
     
