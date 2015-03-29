@@ -5,10 +5,11 @@ The plan is to eventually make a simple hand-held logic analyzer. Right now all 
 
 It uses [this board](http://www.altera.com/products/devkits/altera/kit-max-10-evaluation.html) with [this screen](https://www.adafruit.com/products/1947).
 The capacitive touch interface uses the I2C pins which are not pinned out on the
-MAX 10 board by default, so I may need to provide some diagrams showing how to solder that up later.
+MAX 10 board by default, so I may need to provide some diagrams showing how to solder that up later. I currently have scl on PIN_88 and sda on PIN_90.
 
 Some Documentation:
 
+* [Adafruit Guide](https://learn.adafruit.com/adafruit-2-8-tft-touch-shield-v2)
 * [ILI9341 Specification](http://www.newhavendisplay.com/app_notes/ILI9341.pdf)
 * [FT6x06 Datasheet](http://www.adafruit.com/datasheets/FT6x06%20Datasheet_V0.1_Preliminary_20120723.pdf)
 * [FT6x06 Application Note](http://www.adafruit.com/datasheets/FT6x06_AN_public_ver0.1.3.pdf)
