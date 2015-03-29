@@ -1,7 +1,7 @@
 # pockelizer
 Pocket Logic Analyzer for MAX 10 FPGA and Adafruit Arduino TFT
 
-The plan is to eventually make a simple hand-held logic analyzer. Right now all it does is display a pretty test pattern on the screen.
+The plan is to eventually make a simple hand-held logic analyzer. It's still in development -- right now it does some basic waveform capture and draws a dot when you touch the screen.
 
 It uses [this board](http://www.altera.com/products/devkits/altera/kit-max-10-evaluation.html) with [this screen](https://www.adafruit.com/products/1947).
 The capacitive touch interface uses the I2C pins which are not pinned out on the
