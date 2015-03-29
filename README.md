@@ -4,7 +4,7 @@ Pocket Logic Analyzer for MAX 10 FPGA and Adafruit Arduino TFT
 The plan is to eventually make a simple hand-held logic analyzer. Right now all it does is display a pretty test pattern on the screen.
 
 It uses [this board](http://www.altera.com/products/devkits/altera/kit-max-10-evaluation.html) with [this screen](https://www.adafruit.com/products/1947).
-However, it doesn't use the touch interface yet. The capacitive touch interface uses the I2C pins which are not pinned out on the
+The capacitive touch interface uses the I2C pins which are not pinned out on the
 MAX 10 board by default, so I may need to provide some diagrams showing how to solder that up later.
 
 Some Documentation:
