@@ -7,6 +7,13 @@ It uses [this board](http://www.altera.com/products/devkits/altera/kit-max-10-ev
 However, it doesn't use the touch interface yet. The capacitive touch interface uses the I2C pins which are not pinned out on the
 MAX 10 board by default, so I may need to provide some diagrams showing how to solder that up later.
 
+Some Documentation:
+
+* [ILI9341 Specification](http://www.newhavendisplay.com/app_notes/ILI9341.pdf)
+* [FT6x06 Datasheet](http://www.adafruit.com/datasheets/FT6x06%20Datasheet_V0.1_Preliminary_20120723.pdf)
+* [FT6x06 Application Note](http://www.adafruit.com/datasheets/FT6x06_AN_public_ver0.1.3.pdf)
+* [Opencores I<sup>2</sup>C-Master Core Specification](http://www.urel.feec.vutbr.cz/MPLD/PDF/i2c_specs.pdf)
+
 You can compile the design using [Quartus II Web Edition](http://www.altera.com/products/software/quartus-ii/web-edition/qts-we-index.html).
 I'm going to try to avoid proprietary components so it may be ported easily to other boards and other FPGA manufacturers.
 Notably, I am not going to use a NIOS II microcontroller for the main program logic. Instead everything will be HDL. This may also be because I'm a mashochist.
