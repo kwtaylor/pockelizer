@@ -47,14 +47,16 @@ module pockelizer (
     // touch screen control
     
     wire touch;
+    wire [15:0] touchx;
+    wire [15:0] touchy;
     
     touch_ctrl tctrl (
         .clk(clk),
         .arstn(arstn_sync),
         
         .touch(touch),
-        .touchx(),
-        .touchy(),
+        .touchx(touchx),
+        .touchy(touchy),
         
         .scl(scl),
         .sda(sda)
@@ -169,6 +171,7 @@ module pockelizer (
     localparam DOCAP0     = 4'd9;
     localparam DRAWLOGO   = 4'd10;
     localparam WAITTOUCH  = 4'd11;
+    localparam DRAWDOT    = 4'd12;
 
 
     reg [3:0] step = INIT1;
@@ -308,6 +311,14 @@ module pockelizer (
                 DOCAP: begin
                     startcap <= 1'b1;
                     if(capdone_r) step <= DRAWSTART;
+                    else if(touch) step <= DRAWDOT;
+                end
+                
+                // touchscreen test
+                DRAWDOT: begin drawcmd <= {5'h00,6'h3f,5'h00, 16'd239-touchx, 16'd319-touchy, 16'd239-touchx, 16'd319-touchy};  // draw green dot
+                    startcap <= 1'b1;
+                    if(tft_done) step <= DOCAP;
+                    else draw <= 1'b1;
                 end
                 
                 // drawing program               R,    G,    B, xstart,   ystart,           xend,       yend
