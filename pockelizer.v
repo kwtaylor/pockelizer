@@ -243,10 +243,10 @@ module pockelizer (
     end
     
     // screen oriented sideways
-    //
-    //      <--width-->   ^
-    //  ^                 height
-    //  |
+    //                          <---y (touch 0,0)
+    //      <--width-->   ^           x
+    //  ^                 height      |
+    //  |                             v
     //  x
     //  (0,0) y--->
     ////////////////////////////

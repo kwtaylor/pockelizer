@@ -21,6 +21,11 @@ module touch_ctrl #(
     inout sda
 );
 
+    reg [15:0] touchx_hold;
+    reg [15:0] touchy_hold;
+    reg [2:0] touch_byte; // 0 = touch, 1 = xh, 2 = xl, 3 = yh, 4 = yl
+    reg touch_hold;
+
     reg  [2:0] adr;
     reg  [7:0] dat_i;
     wire [7:0] dat_o;
@@ -101,6 +106,10 @@ module touch_ctrl #(
             touch <= 1'b0;
             touchx <= 16'b0;
             touchy <= 16'b0;
+            touch_byte <= 0;
+            touch_hold <= 0;
+            touchx_hold <= 16'b0;
+            touchy_hold <= 16'b0;
         end else begin
             adr <= 3'b0;
             dat_i <= 8'b0;
@@ -224,7 +233,7 @@ module touch_ctrl #(
                     end
                     
                     
-                14: // READ NTOUCHES: set slave address, WR
+                14: // READ TOUCHES: set slave address, WR
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b1;
@@ -232,7 +241,7 @@ module touch_ctrl #(
                         dat_i <= {ADDR, 1'b0};
                     end else state <= state+1;
                     
-                15: // READ NTOUCHES: (saddress) generate start, write
+                15: // READ TOUCHES: (saddress) generate start, write
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b1;
@@ -240,7 +249,7 @@ module touch_ctrl #(
                         dat_i <= CMD_STA | CMD_WR;
                     end else state <= state+1;
                     
-                16: // READ NTOUCHES: (saddress) wait for ~TIP
+                16: // READ TOUCHES: (saddress) wait for ~TIP
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b0;
@@ -252,7 +261,7 @@ module touch_ctrl #(
                     end
                     
                     
-                17: // READ NTOUCHES: set data address
+                17: // READ TOUCHES: set data address
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b1;
@@ -260,7 +269,7 @@ module touch_ctrl #(
                         dat_i <= FT6206_NTOUCH;
                     end else state <= state+1;
                     
-                18: // READ NTOUCHES: (daddress) write, stop
+                18: // READ TOUCHES: (daddress) write, stop
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b1;
@@ -268,7 +277,7 @@ module touch_ctrl #(
                         dat_i <= CMD_STO | CMD_WR;
                     end else state <= state+1;
                     
-                19: // READ NTOUCHES: (daddress) wait for ~TIP
+                19: // READ TOUCHES: (daddress) wait for ~TIP
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b0;
@@ -279,7 +288,7 @@ module touch_ctrl #(
                     end
                     
                     
-                20: // READ NTOUCHES: set slave address, RD
+                20: // READ TOUCHES: set slave address, RD
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b1;
@@ -287,7 +296,7 @@ module touch_ctrl #(
                         dat_i <= {ADDR, 1'b1};
                     end else state <= state+1;
                     
-                21: // READ NTOUCHES: (saddress) generate start, write
+                21: // READ TOUCHES: (saddress) generate start, write
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b1;
@@ -295,7 +304,7 @@ module touch_ctrl #(
                         dat_i <= CMD_STA | CMD_WR;
                     end else state <= state+1;
                     
-                22: // READ NTOUCHES: (saddress) wait for ~TIP
+                22: // READ TOUCHES: (saddress) wait for ~TIP
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b0;
@@ -307,15 +316,18 @@ module touch_ctrl #(
                     end
                     
                     
-                23: // READ NTOUCHES: (data) read, nack, stop
+                23: // READ TOUCHES: (data) read, nack, stop
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b1;
                         adr <= I2C_CR;
-                        dat_i <= CMD_STO | CMD_NACK | CMD_RD;
+                        if(touch_byte == 3'd4) // nack on last byte
+                            dat_i <= CMD_STO | CMD_NACK | CMD_RD;
+                        else
+                            dat_i <= CMD_RD;
                     end else state <= state+1;
                     
-                24: // READ NTOUCHES: (data) wait for ~TIP
+                24: // READ TOUCHES: (data) wait for ~TIP
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b0;
@@ -325,18 +337,33 @@ module touch_ctrl #(
                         else state <= state+1;
                     end
                     
-                24: // READ NTOUCHES: (data) read data
+                25: // READ TOUCHES: (data) read data
                     if(~ack) begin
                         cyc <= 1'b1;
                         we <= 1'b0;
                         adr <= I2C_RXR;
                     end else begin
-                        if(dat_o & 2'b11) touch <= 1'b1; // accept 1 or 2 touches
-                        else touch <= 1'b0;
-                        state <= state+1;
+                        touch_byte <= touch_byte+1;
+                        state <= 23; // continue read
+                        case(touch_byte)
+                            3'd0: touch_hold <= (dat_o == 2'b01 || dat_o == 2'b10); // accept 1 or 2 touches
+                            3'd1: touchx_hold[15:8] <= {4'b0, dat_o[3:0]};
+                            3'd2: touchx_hold[7:0]  <= dat_o[7:0];
+                            3'd3: touchy_hold[15:8] <= {4'b0, dat_o[3:0]};
+                            3'd4: begin
+                                touch <= touch_hold;
+                                touchx <= touchx_hold;
+                                touchy <= {touchy_hold[15:8], dat_o[7:0]};
+                                touch_byte <= 0;
+                                state <= 14; // loop forever!
+                            end
+                            default: begin
+                                touch_byte <= 0;
+                                state <= 14;
+                            end
+                        endcase
                     end
                     
-                25: state <= 14; // loop touches
                 
                 default: state <= 0;
             endcase
