@@ -33,6 +33,7 @@ module button #(
     
     output reg touched,
     output reg [STATEBITS-1:0] state,
+    input rst_state,
     
     // drawing interface
     output reg update, // needs drawing update
@@ -67,7 +68,10 @@ always @(posedge clk or negedge arstn) begin
         state <= 0;
         update <= 1'b1;
     end else begin
-        if(touched && !lasttouched) begin
+        if(rst_state) begin
+            update <= 1'b1;
+            state <= 0;
+        end else if(touched && !lasttouched) begin
             update <= 1'b1;
             if(state==NUMSTATES-1) state <= 0;
             else state <= state+1;

@@ -25,6 +25,7 @@ module gui
     
     // button states
     output start_state, // 0=pause, 1=go
+    input start_rst,
     output left_touched,
     output right_touched
 );
@@ -63,6 +64,7 @@ module gui
         
         .touched(),
         .state(start_state),
+        .rst_state(start_rst),
         
         // drawing interface
         .update(start_update), // needs drawing update
@@ -155,6 +157,7 @@ module gui
         
         .touched(left_touched),
         .state(),
+        .rst_state(),
         
         // drawing interface
         .update(left_update), // needs drawing update
@@ -225,6 +228,7 @@ module gui
         
         .touched(right_touched),
         .state(),
+        .rst_state(),
         
         // drawing interface
         .update(right_update), // needs drawing update
