@@ -115,6 +115,101 @@ module pockelizer (
         end
     
     end
+    
+    //gui (just one button for now)
+
+    wire [15:0] gxstart;
+    wire [15:0] gxend;
+    wire [15:0] gystart;
+    wire [15:0] gyend;
+    wire [15:0] gcolor;
+    
+    reg gdraw;
+    wire gupdate;
+    wire gdrawdone;
+    
+    button #(
+        .XSTART(10),
+        .YSTART(10),
+        .WIDTH(40),
+        .HEIGHT(40),
+        
+        .XBMP(10),
+        .YBMP(10),
+        .BMPWIDTH(20),
+        .BMPHEIGHT(20),
+        .BMPBITS(1),
+        
+        .NUMSTATES(2),
+        .STATEBITS(1)
+    ) gui (
+        .clk(clk),
+        .arstn(arstn_sync),
+        
+        // touch input
+        .touch(touch),
+        .touchx(16'd239-touchx),// screen coordinates
+        .touchy(16'd319-touchy),
+        
+        .touched(),
+        .state(),
+        
+        // drawing interface
+        .update(gupdate), // needs drawing update
+        .draw(gdraw),
+        .cnext(cnext),
+        .drawdone(gdrawdone),
+        
+        .xstart(gxstart),
+        .xend(gxend),
+        .ystart(gystart),
+        .yend(gyend),
+        .color(gcolor),
+        
+        // bitmap (columns are x (width), rows are y (height) then state 0, 1, 2, etc
+        .bmp({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b0,
+              1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,
+              1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,
+              1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,
+              1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b1,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0})
+    );
+
 
     // tft control!
     wire tft_busy;
@@ -122,6 +217,7 @@ module pockelizer (
     reg init_tft;
     reg draw;
     reg [79:0] drawcmd;
+    reg drawgui;
     
     wire [15:0] xstart;
     wire [15:0] xend;
@@ -129,7 +225,8 @@ module pockelizer (
     wire [15:0] yend;
     wire [15:0] color;
     
-    assign {color, xstart, ystart, xend, yend} = drawcmd;
+    wire [79:0] guicmd = {gcolor, gxstart, gystart, gxend, gyend};
+    assign {color, xstart, ystart, xend, yend} = drawgui ? guicmd : drawcmd;
     
     tft_ctrl /*#(.DLY_WIDTH(5))*/ tctl (
         .clk(clk),
@@ -172,6 +269,9 @@ module pockelizer (
     localparam DRAWLOGO   = 4'd10;
     localparam WAITTOUCH  = 4'd11;
     localparam DRAWDOT    = 4'd12;
+    localparam DRAWINIT   = 4'd13;
+    localparam DRAWGUI    = 4'd14;
+    localparam DRAWGUI2   = 4'd15;
 
 
     reg [3:0] step = INIT1;
@@ -188,10 +288,10 @@ module pockelizer (
     reg [15:0] ypos;
     
     localparam TOPOFS  = 16'd10; // offset from top
-    localparam LEFTOFS = 16'd10; // offset from left
-    localparam WHEIGHT = 16'd20; // height of one wave
+    localparam LEFTOFS = 16'd60; // offset from left
+    localparam WHEIGHT = 16'd17; // height of one wave
     localparam WWIDTH  = 16'd5; // width of one step
-    localparam WVSTEP  = 16'd50; // distance to next waveform down
+    localparam WVSTEP  = 16'd38; // distance to next waveform down
     localparam STEP_SIZE = 6; // width of regs needed for max steps
     localparam WHSTEPS = 6'd60; // number of bit steps per wave
     localparam POSOFFS = 4'd3; // offset of capture edge from start
@@ -263,6 +363,8 @@ module pockelizer (
             draw <= 1'b0;
             startcap <= 1'b0;
             uselogo <= 1'b0;
+            gdraw <= 1'b0;
+            drawgui <= 1'b0;
             step <= 0;
         end else begin
             clr_ctr <= 1'b1;
@@ -270,6 +372,8 @@ module pockelizer (
             draw <= 1'b0;
             startcap <= 1'b0;
             uselogo <= 1'b0;
+            gdraw <= 1'b0;
+            drawgui <= 1'b0;
         
             // synchronize
             capdone_rr <= capdone;
@@ -301,16 +405,28 @@ module pockelizer (
                 end
                 
                 WAITTOUCH: begin
-                    if(touch) step <= DRAWSTART; // draw *something* on startup
+                    if(touch) step <= DRAWINIT;
                 end  
                 
+                // blank screen                 R,    G,    B, xstart,   ystart,           xend,       yend
+                DRAWINIT: begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,         16'd239,    16'd319};  // black background
+                    if(tft_done) begin
+                        step <= DRAWSTART;
+                    end else draw <= 1'b1;
+                end
+                
+                // wait capture
                 DOCAP0: begin
                     if(!capdone_r) step <= DOCAP;
                 end
                 
                 DOCAP: begin
                     startcap <= 1'b1;
-                    if(capdone_r) step <= DRAWSTART;
+                    if(gupdate) begin
+                        gdraw <= 1'b1;
+                        drawgui <= 1'b1;
+                        step <= DRAWGUI;
+                    end else if(capdone_r) step <= DRAWSTART;
                     else if(touch) step <= DRAWDOT;
                 end
                 
@@ -321,8 +437,19 @@ module pockelizer (
                     else draw <= 1'b1;
                 end
                 
-                // drawing program               R,    G,    B, xstart,   ystart,           xend,       yend
-                DRAWSTART: begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,        16'd239,    16'd319};  // black background
+                DRAWGUI: begin // handshake delay
+                    drawgui <= 1'b1;
+                    step <= DRAWGUI2;
+                end    
+                
+                DRAWGUI2: begin 
+                    drawgui <= 1'b1;
+                    if(gdrawdone) step <= DOCAP;
+                    else draw <= 1'b1;
+                end
+                
+                // drawing program               R,    G,    B, xstart,   ystart,            xend,      yend
+                DRAWSTART: begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,  LEFTOFS, 16'd239 - TOPOFS,  16'd319};  // black background
                     if(tft_done) begin
                         xpos <= 16'd239 - TOPOFS;
                         ypos <= LEFTOFS;
