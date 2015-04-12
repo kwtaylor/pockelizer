@@ -69,7 +69,7 @@ always @(posedge clk or negedge arstn) begin
     end else begin
         if(touched && !lasttouched) begin
             update <= 1'b1;
-            if(state==NUMSTATES) state <= 0;
+            if(state==NUMSTATES-1) state <= 0;
             else state <= state+1;
         end else if(!touched && lasttouched) begin
             if(INVTOUCH) update <= 1'b1;
