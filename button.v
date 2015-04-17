@@ -21,7 +21,9 @@ module button #(
     parameter BMPBITS = 1, // only supports 1,3,16
     
     parameter NUMSTATES = 1,
-    parameter STATEBITS = 1
+    parameter STATEBITS = 1,
+    
+    parameter INTREG = 0 // use internal shift register
 ) (
     input clk,
     input arstn,
@@ -46,6 +48,12 @@ module button #(
     output [15:0] ystart,
     output [15:0] yend,
     output [15:0] color,
+    
+    // external bitmap register (to save resources)
+    output [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] bmpregout, // output to external bitmap shift register
+    input [BMPBITS-1:0] bmpregin, // input from shift register
+    output bmpreg_load,
+    output reg bmpreg_shift,
     
     // bitmap (columns are x (width), rows are y (height) then state 0, 1, 2, etc
     input [0:BMPWIDTH*BMPHEIGHT*BMPBITS*NUMSTATES-1] bmp // MSB to the right so we start from upper left
@@ -83,7 +91,9 @@ always @(posedge clk or negedge arstn) begin
 end
 
 // draw command
-reg [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] bmpreg; // MSB to the right so we start from upper left
+assign bmpregout = bmp[BMPWIDTH*BMPHEIGHT*BMPBITS*state +: BMPWIDTH*BMPHEIGHT*BMPBITS];
+assign bmpreg_load = !draw && drawdone;
+  
 reg [15:0] posx;
 reg [15:0] posy;
 
@@ -98,12 +108,14 @@ always @(posedge clk or negedge arstn) begin
         drawdone <= 1'b1;
         posx <= 0;
         posy <= 0;
-    end else if(!draw && drawdone) begin
-        bmpreg <= bmp[BMPWIDTH*BMPHEIGHT*BMPBITS*state +: BMPWIDTH*BMPHEIGHT*BMPBITS];
+        bmpreg_shift <= 0;
+    end else if(bmpreg_load) begin
         drawdone <= 1'b1;
         posx <= 0;
         posy <= 0;
+        bmpreg_shift <= 0;
     end else begin
+        bmpreg_shift <= 0;
         drawdone <= 1'b0;
         if(cnext) begin
             if(posx == WIDTH-1 && posy == HEIGHT-1) drawdone <= 1'b1;
@@ -113,11 +125,36 @@ always @(posedge clk or negedge arstn) begin
                     posy <= posy + 1'b1;
                 end else posx <= posx + 1'b1;
                 
-                if(inbmp) bmpreg <= bmpreg << BMPBITS;
+                if(inbmp) bmpreg_shift <= 1'b1;
             end
         end
     end
 end
+
+wire [BMPBITS-1:0] bmpcol;
+    
+generate
+  if(INTREG) begin
+  
+    reg [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] bmpreg; // MSB to the right so we start from upper left
+    
+    always @(posedge clk) begin
+        if(bmpreg_load)
+            bmpreg <= bmpregout;
+        else if(bmpreg_shift)
+            bmpreg <= bmpreg << BMPBITS;
+    end
+    
+    assign bmpcol = bmpreg[BMPBITS-1:0];
+    
+  end else begin
+    assign bmpcol = bmpregin;
+  end
+endgenerate
+
+wire [15:0] bmpcolor = ((BMPBITS == 1) ? {16{bmpcol[0]}} :
+                        (BMPBITS == 3) ? {{5{bmpcol[2]}},{6{bmpcol[1]}},{5{bmpcol[0]}}} :
+                        bmpcol);
 
 assign xstart = XSTART;
 assign xend = XSTART+WIDTH-1;
@@ -125,9 +162,7 @@ assign ystart = YSTART;
 assign yend = YSTART+HEIGHT-1;
 assign color = ((INVTOUCH && touched) ? 16'hFFFF : 16'h0000) ^
                (inbord ? BORDERRGB :
-                inbmp ? ((BMPBITS == 1) ? {16{bmpreg[0]}} :
-                         (BMPBITS == 3) ? {{5{bmpreg[2]}},{6{bmpreg[1]}},{5{bmpreg[0]}}} :
-                         bmpreg[BMPBITS-1:0]) :
+                inbmp  ? bmpcolor  :
                 BACKRGB);
 
 endmodule

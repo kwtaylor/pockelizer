@@ -29,6 +29,11 @@ module gui
     output left_touched,
     output right_touched
 );
+    localparam BMPWIDTH = 20;
+    localparam BMPHEIGHT = 20;
+    localparam BMPBITS = 1;
+    
+    wire [BMPBITS-1:0] bmpregin;
 
     wire [15:0] start_xstart;
     wire [15:0] start_xend;
@@ -38,6 +43,9 @@ module gui
     
     reg start_draw;
     wire start_update;
+    wire [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] start_bmpout;
+    wire start_load;
+    wire start_shift;
     
     button #(
         .XSTART(10),
@@ -47,9 +55,9 @@ module gui
         
         .XBMP(10),
         .YBMP(10),
-        .BMPWIDTH(20),
-        .BMPHEIGHT(20),
-        .BMPBITS(1),
+        .BMPWIDTH(BMPWIDTH),
+        .BMPHEIGHT(BMPHEIGHT),
+        .BMPBITS(BMPBITS),
         
         .NUMSTATES(2),
         .STATEBITS(1)
@@ -77,6 +85,11 @@ module gui
         .ystart(start_ystart),
         .yend  (start_yend),
         .color (start_color),
+        
+        .bmpregout(start_bmpout),
+        .bmpregin(bmpregin),
+        .bmpreg_load(start_load),
+        .bmpreg_shift(start_shift),
         
         // bitmap (columns are x (width), rows are y (height) then state 0, 1, 2, etc
         .bmp({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
@@ -131,6 +144,9 @@ module gui
     
     reg  left_draw;
     wire left_update;
+    wire [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] left_bmpout;
+    wire left_load;
+    wire left_shift;
     
     button #(
         .XSTART(10),
@@ -140,9 +156,9 @@ module gui
         
         .XBMP(10),
         .YBMP(10),
-        .BMPWIDTH(20),
-        .BMPHEIGHT(20),
-        .BMPBITS(1),
+        .BMPWIDTH(BMPWIDTH),
+        .BMPHEIGHT(BMPHEIGHT),
+        .BMPBITS(BMPBITS),
         
         .NUMSTATES(1),
         .STATEBITS(1)
@@ -171,6 +187,11 @@ module gui
         .yend  (left_yend),
         .color (left_color),
         
+        .bmpregout(left_bmpout),
+        .bmpregin(bmpregin),
+        .bmpreg_load(left_load),
+        .bmpreg_shift(left_shift),
+        
         // bitmap (columns are x (width), rows are y (height) then state 0, 1, 2, etc
         .bmp({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
               1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
@@ -191,7 +212,7 @@ module gui
               1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,
               1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,
               1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,
-              1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,})
+              1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0})
     );
     
     wire [15:0] right_xstart;
@@ -202,6 +223,9 @@ module gui
     
     reg  right_draw;
     wire right_update;
+    wire [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] right_bmpout;
+    wire right_load;
+    wire right_shift;
     
     button #(
         .XSTART(10),
@@ -211,9 +235,9 @@ module gui
         
         .XBMP(10),
         .YBMP(10),
-        .BMPWIDTH(20),
-        .BMPHEIGHT(20),
-        .BMPBITS(1),
+        .BMPWIDTH(BMPWIDTH),
+        .BMPHEIGHT(BMPHEIGHT),
+        .BMPBITS(BMPBITS),
         
         .NUMSTATES(1),
         .STATEBITS(1)
@@ -242,6 +266,11 @@ module gui
         .yend  (right_yend),
         .color (right_color),
         
+        .bmpregout(right_bmpout),
+        .bmpregin(bmpregin),
+        .bmpreg_load(right_load),
+        .bmpreg_shift(right_shift),
+        
         // bitmap (columns are x (width), rows are y (height) then state 0, 1, 2, etc
         .bmp({1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,
               1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,
@@ -262,7 +291,7 @@ module gui
               1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
               1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
               1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,
-              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,})
+              1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0})
     );
     
     // gui draw states
@@ -350,5 +379,26 @@ module gui
                     (state == RIGHT) ? right_color :
                     16'b0;
 
+    
+    // shared shift register for the button bitmaps, to save resources
+    reg [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] bmpreg; // MSB to the right so we start from upper left
+    
+    wire bmpreg_load =  (state == START) ? start_load :
+                        (state == LEFT)  ? left_load :
+                        (state == RIGHT) ? right_load :
+                        1'b0;
+                        
+    wire bmpreg_shift = start_shift | left_shift | right_shift;
+    
+    always @(posedge clk) begin
+        if(bmpreg_load)
+            bmpreg <= (state == START) ? start_bmpout :
+                      (state == LEFT)  ? left_bmpout :
+                                         right_bmpout;
+        else if(bmpreg_shift)
+            bmpreg <= bmpreg << BMPBITS;
+    end
+    
+    assign bmpregin = bmpreg[BMPBITS-1:0];
 
 endmodule
