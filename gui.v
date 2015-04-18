@@ -27,7 +27,8 @@ module gui
     output start_state, // 0=pause, 1=go
     input start_rst,
     output left_touched,
-    output right_touched
+    output right_touched,
+    output [2:0] clock_state
 );
     localparam BMPWIDTH = 20;
     localparam BMPHEIGHT = 20;
@@ -173,7 +174,7 @@ module gui
         
         .touched(left_touched),
         .state(),
-        .rst_state(),
+        .rst_state(1'b0),
         
         // drawing interface
         .update(left_update), // needs drawing update
@@ -252,7 +253,7 @@ module gui
         
         .touched(right_touched),
         .state(),
-        .rst_state(),
+        .rst_state(1'b0),
         
         // drawing interface
         .update(right_update), // needs drawing update
@@ -294,28 +295,261 @@ module gui
               20'b00000000010000000000})
     );
     
-    // gui draw states
-    localparam INIT  = 3'd0;
-    localparam START = 3'd1;
-    localparam LEFT  = 3'd2;
-    localparam RIGHT = 3'd3;
+    wire [15:0] clock_xstart;
+    wire [15:0] clock_xend;
+    wire [15:0] clock_ystart;
+    wire [15:0] clock_yend;
+    wire [15:0] clock_color;
     
-    reg [2:0] state;
+    reg  clock_draw;
+    wire clock_update;
+    wire [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] clock_bmpout;
+    wire clock_load;
+    wire clock_shift;
+    
+    button #(
+        .XSTART(10),
+        .YSTART(10),
+        .WIDTH(40),
+        .HEIGHT(40),
+        
+        .XBMP(10),
+        .YBMP(10),
+        .BMPWIDTH(BMPWIDTH),
+        .BMPHEIGHT(BMPHEIGHT),
+        .BMPBITS(BMPBITS),
+        
+        .NUMSTATES(8),
+        .STATEBITS(3)
+    ) clock (
+        .clk(clk),
+        .arstn(arstn),
+        
+        // touch input
+        .touch(touch),
+        .touchx(touchx),// screen coordinates
+        .touchy(touchy),
+        
+        .touched(),
+        .state(clock_state),
+        .rst_state(1'b0),
+        
+        // drawing interface
+        .update(clock_update), // needs drawing update
+        .draw(clock_draw),
+        .cnext(cnext),
+        .drawdone(),
+        
+        .xstart(clock_xstart),
+        .xend  (clock_xend),
+        .ystart(clock_ystart),
+        .yend  (clock_yend),
+        .color (clock_color),
+        
+        .bmpregout(clock_bmpout),
+        .bmpregin(bmpregin),
+        .bmpreg_load(clock_load),
+        .bmpreg_shift(clock_shift),
+        
+        // bitmap (columns are x (width), rows are y (height) then state 0, 1, 2, etc
+        .bmp({20'b00000000000000000000,
+              20'b01000000000000000000,
+              20'b01000000000000000000,
+              20'b01000000000000000000,
+              20'b01000000000000000000,
+              20'b01111111111111111000,
+              20'b00000000000000001000,
+              20'b00000000000000001000,
+              20'b00000000000000001000,
+              20'b00000000000000001000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000010000000000,
+              20'b00000000111000000000,
+              20'b00000001010100000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              
+              20'b00000000000000000000,
+              20'b00000000000000001000,
+              20'b00000000000000001000,
+              20'b00000000000000001000,
+              20'b00000000000000001000,
+              20'b01111111111111111000,
+              20'b01000000000000000000,
+              20'b01000000000000000000,
+              20'b01000000000000000000,
+              20'b01000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000010000000000,
+              20'b00000000111000000000,
+              20'b00000001010100000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+
+
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00011111111111111000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00011000000000000000,
+              20'b00011000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00010000000111111000,
+              20'b00010000000100001000,
+              20'b00001000001000001000,
+              20'b00000111110000001000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00011111111111111000,
+              20'b00000000011000000000,
+              20'b00000011100111000000,
+              20'b00011100000000111000,
+              
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00001111111111110000,
+              20'b00010000001000001000,
+              20'b00010000001000001000,
+              20'b00001111110000110000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00011111111111111000,
+              20'b00000000011000000000,
+              20'b00000011100111000000,
+              20'b00011100000000111000,
+              
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00010000000111111000,
+              20'b00010000000100001000,
+              20'b00001000001000001000,
+              20'b00000111110000001000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00001111111111110000,
+              20'b00010000000000001000,
+              20'b00010000000000001000,
+              20'b00001111111111110000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00011111111111111000,
+              20'b00000000011000000000,
+              20'b00000011100111000000,
+              20'b00011100000000111000,
+              
+              20'b00000000000000000000,
+              20'b00001000000000010000,
+              20'b00010000001000001000,
+              20'b00010000001000001000,
+              20'b00001111110111110000,
+              20'b00000000000000000000,
+              20'b00001100000111110000,
+              20'b00010000001000001000,
+              20'b00010000001000001000,
+              20'b00001111111111110000,
+              20'b00000000000000000000,
+              20'b00001111111111110000,
+              20'b00010000000000001000,
+              20'b00010000000000001000,
+              20'b00001111111111110000,
+              20'b00000000000000000000,
+              20'b00011111111111111000,
+              20'b00000000011000000000,
+              20'b00000011100111000000,
+              20'b00011100000000111000,
+              
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00011111111111111000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00011000000000000000,
+              20'b00011000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00010000000111111000,
+              20'b00010000000100001000,
+              20'b00001000001000001000,
+              20'b00000111110000001000,
+              20'b00000000000000000000,
+              20'b00011111111111111000,
+              20'b00000000000111000000,
+              20'b00000000011000000000,
+              20'b00000000000111000000,
+              20'b00011111111111111000,
+              
+              20'b00001111111111110000,
+              20'b00010000001000001000,
+              20'b00010000001000001000,
+              20'b00001111110000110000,
+              20'b00000000000000000000,
+              20'b00011000000000000000,
+              20'b00000000000000000000,
+              20'b00001111110000010000,
+              20'b00010000001000010000,
+              20'b00010000000111110000,
+              20'b00000000000000000000,
+              20'b00010000000111111000,
+              20'b00010000000100001000,
+              20'b00000111110000001000,
+              20'b00000000000000000000,
+              20'b00011111111111111000,
+              20'b00000000000111000000,
+              20'b00000000011000000000,
+              20'b00000000000111000000,
+              20'b00011111111111111000
+              
+              })
+    );
+    
+    
+    // gui draw states
+    localparam INIT  = 4'd0;
+    localparam START = 4'd1;
+    localparam LEFT  = 4'd2;
+    localparam RIGHT = 4'd3;
+    localparam CLOCK = 4'd4;
+    
+    reg [3:0] state;
     
     always @(posedge clk or negedge arstn) begin
         if(~arstn) begin
-            state <= 3'b0;
+            state <= 0;
             tft_draw <= 1'b0;
             drawdone <= 1'b1;
             start_draw <= 1'b0;
             left_draw <= 1'b0;
             right_draw <= 1'b0;
+            clock_draw <= 1'b0;
         end else begin
             drawdone <= 1'b0;
             tft_draw <= 1'b0;
             start_draw <= 1'b0;
             left_draw <= 1'b0;
             right_draw <= 1'b0;
+            clock_draw <= 1'b0;
             
             case(state)
                 INIT: begin
@@ -343,9 +577,17 @@ module gui
                 end                
                 
                 RIGHT: begin
-                    if(!right_update && !tft_draw || tft_done) state <= INIT;
+                    if(!right_update && !tft_draw || tft_done) state <= CLOCK;
                     else begin
                         if(right_update) right_draw <= 1'b1;
+                        tft_draw <= 1'b1;
+                    end
+                end
+                
+                CLOCK: begin
+                    if(!clock_update && !tft_draw || tft_done) state <= INIT;
+                    else begin
+                        if(clock_update) clock_draw <= 1'b1;
                         tft_draw <= 1'b1;
                     end
                 end
@@ -356,27 +598,32 @@ module gui
         end
     end
     
-    assign update = start_update | left_update | right_update;
+    assign update = start_update | left_update | right_update | clock_update;
     
     assign xstart = (state == START) ? start_xstart : 
                     (state == LEFT)  ? left_xstart  :
                     (state == RIGHT) ? right_xstart : 
+                    (state == CLOCK) ? clock_xstart : 
                     16'b0;
     assign xend =   (state == START) ? start_xend :
                     (state == LEFT)  ? left_xend :
                     (state == RIGHT) ? right_xend :
+                    (state == CLOCK) ? clock_xend :
                     16'b0;
     assign ystart = (state == START) ? start_ystart :
                     (state == LEFT)  ? left_ystart :
                     (state == RIGHT) ? right_ystart :
+                    (state == CLOCK) ? clock_ystart :
                     16'b0;
     assign yend =   (state == START) ? start_yend :
                     (state == LEFT)  ? left_yend :
                     (state == RIGHT) ? right_yend :
+                    (state == CLOCK) ? clock_yend :
                     16'b0;
     assign color =  (state == START) ? start_color :
                     (state == LEFT)  ? left_color :
                     (state == RIGHT) ? right_color :
+                    (state == CLOCK) ? clock_color :
                     16'b0;
 
     
@@ -386,15 +633,17 @@ module gui
     wire bmpreg_load =  (state == START) ? start_load :
                         (state == LEFT)  ? left_load :
                         (state == RIGHT) ? right_load :
+                        (state == CLOCK) ? clock_load :
                         1'b0;
                         
-    wire bmpreg_shift = start_shift | left_shift | right_shift;
+    wire bmpreg_shift = start_shift | left_shift | right_shift | clock_shift;
     
     always @(posedge clk) begin
         if(bmpreg_load)
             bmpreg <= (state == START) ? start_bmpout :
                       (state == LEFT)  ? left_bmpout :
-                                         right_bmpout;
+                      (state == RIGHT) ? right_bmpout:
+                                         clock_bmpout;
         else if(bmpreg_shift)
             bmpreg <= bmpreg << BMPBITS;
     end
