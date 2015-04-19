@@ -138,9 +138,10 @@ module pockelizer (
     wire start_state;
     reg start_rst;
     wire cont_state;
-    wire [3:0] capclk_state;
+    wire [2:0] capclk_state;
     wire left_touched;
     wire right_touched;
+    wire [1:0] pos_state;
     wire [WAVES*3-1:0] cap_state;
     
     gui g (
@@ -172,6 +173,7 @@ module pockelizer (
         .cont_rst(start_state),
         .left_touched(left_touched),
         .right_touched(right_touched),
+        .pos_state(pos_state),
         .clock_state(capclk_state),
         .cap_state(cap_state)
         
@@ -224,7 +226,6 @@ module pockelizer (
     localparam DRAWVERT   = 4'd6;
     localparam NEXTBIT    = 4'd7;
     localparam DOCAP      = 4'd8;
-    localparam DOCAP0     = 4'd9;
     localparam DRAWLOGO   = 4'd10;
     localparam WAITTOUCH  = 4'd11;
     localparam DRAWDOT    = 4'd12;
@@ -254,7 +255,9 @@ module pockelizer (
     localparam STEP_SIZE = 7; // width of regs needed for max steps
     localparam WHSTEPS = 7'd120; // number of bit steps per wave
     localparam SCSTEPS = 7'd60; // number of bit steps on screen
-    localparam POSOFFS = 4'd3; // offset of capture edge from start
+    localparam LPOSOFFS = 7'd3; // offset of capture edge from start (left cap)
+    localparam MPOSOFFS = 7'd60; // offset of capture edge from start (mid cap)
+    localparam RPOSOFFS = 7'd115; // offset of capture edge from start (right cap)
     localparam WAVES   = 5; // number of waves
     
     reg [STEP_SIZE-1:0] bitstep;
@@ -271,7 +274,7 @@ module pockelizer (
     
     reg docap = 1'b0;
     reg startcap, startcap_rr, startcap_r;
-    reg capdone, capdone_rr, capdone_r;
+    reg capdone, capdone_rr, capdone_r, capdone_c;
     reg [STEP_SIZE-1:0] cappos;
     reg [STEP_SIZE-1:0] capstart = 0;
     reg lastlefttouch, lastrighttouch;
@@ -349,6 +352,10 @@ module pockelizer (
         endcase
     end
     
+    localparam POSL = 2'd0;
+    localparam POSM = 2'd1;
+    localparam POSR = 2'd2;
+    
     always @(posedge capclock) begin
         // running capture buffer
         if(startcap_r) begin
@@ -371,7 +378,9 @@ module pockelizer (
             // reset things
             docap <= 1'b0;
             capdone <= 1'b0;
-            cappos <= POSOFFS;
+            cappos <= pos_state == POSL ? LPOSOFFS :
+                      pos_state == POSM ? MPOSOFFS :
+                                          RPOSOFFS;
         end
         
         //synchronize
@@ -402,6 +411,7 @@ module pockelizer (
             start_rst <= 1'b0;
             rstcapstart <= 1'b0;
             step <= 0;
+            capdone_c <= 1'b0;
         end else begin
             clr_ctr <= 1'b1;
             init_tft <= 1'b0;
@@ -416,6 +426,7 @@ module pockelizer (
             // synchronize
             capdone_rr <= capdone;
             capdone_r <= capdone_rr;
+            if(capdone_r && !capdone_rr) capdone_c <= 1'b1;
             
             case(step)
                 INIT1: begin // wait for counter to clear
@@ -452,19 +463,15 @@ module pockelizer (
                         step <= DRAWSTART;
                     end else draw <= 1'b1;
                 end
-                
-                // wait capture
-                DOCAP0: begin
-                    if(!capdone_r) step <= DOCAP;
-                end
-                
+
                 DOCAP: begin
-                    if(start_state || cont_state) startcap <= 1'b1; //TODO also have one-time trigger
+                    if((start_state || cont_state) && !capdone_r) startcap <= 1'b1;
                     if(gupdate) begin
                         gdraw <= 1'b1;
                         drawgui <= 1'b1;
                         step <= DRAWGUI;
-                    end else if(capdone_r) begin
+                    end else if(capdone_c) begin
+                        capdone_c <= 1'b0;
                         step <= DRAWSTART;
                         start_rst <= 1'b1;
                         rstcapstart <= 1'b1;
@@ -473,7 +480,7 @@ module pockelizer (
                 
                 // touchscreen test
                 DRAWDOT: begin drawcmd <= {5'h00,6'h3f,5'h00, 16'd239-touchx, 16'd319-touchy, 16'd239-touchx, 16'd319-touchy};  // draw green dot
-                    if(start_state || cont_state) startcap <= 1'b1;
+                    if((start_state || cont_state) && !capdone_r) startcap <= 1'b1;
                     if(tft_done) step <= DOCAP;
                     else draw <= 1'b1;
                 end
@@ -487,7 +494,7 @@ module pockelizer (
                     drawgui <= 1'b1;
                     if(gdrawdone) begin
                         if(updwav) step <= DRAWSTART;
-                        else step <= DOCAP0;
+                        else step <= DOCAP;
                     end
                 end
                 
@@ -522,7 +529,7 @@ module pockelizer (
                 
                 NEXTBIT: begin 
                     if(bitstep == WHSTEPS-1 || bitstep == capstart+SCSTEPS) begin
-                        if(wave == WAVES-1) step <= DOCAP0;
+                        if(wave == WAVES-1) step <= DOCAP;
                         else begin // next wave
                             xpos <= xpos - WVSTEP;
                             ypos <= LEFTOFS;

@@ -33,6 +33,7 @@ module gui #(
     input cont_rst,
     output left_touched,
     output right_touched,
+    output [1:0] pos_state,
     output [2:0] clock_state,
     output [WAVES*3-1:0] cap_state
 );
@@ -240,6 +241,128 @@ module gui #(
               20'b00000000000000000000,
               20'b00000000000000000000,
               20'b00000000000000000000})
+    );
+    
+    
+    wire [15:0] pos_xstart;
+    wire [15:0] pos_xend;
+    wire [15:0] pos_ystart;
+    wire [15:0] pos_yend;
+    wire [15:0] pos_color;
+    
+    reg pos_draw;
+    wire pos_update;
+    wire [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] pos_bmpout;
+    wire pos_load;
+    wire pos_shift;
+    
+    button #(
+        .XSTART(10),
+        .YSTART(210),
+        .WIDTH(40),
+        .HEIGHT(40),
+        
+        .XBMP(10),
+        .YBMP(10),
+        .BMPWIDTH(BMPWIDTH),
+        .BMPHEIGHT(BMPHEIGHT),
+        .BMPBITS(BMPBITS),
+        
+        .NUMSTATES(3),
+        .STATEBITS(2)
+    ) pos (
+        .clk(clk),
+        .arstn(arstn),
+        
+        // touch input
+        .touch(touch),
+        .touchx(touchx),// screen coordinates
+        .touchy(touchy),
+        
+        .touched(),
+        .state(pos_state),
+        .rst_state(),
+        
+        // drawing interface
+        .update(pos_update), // needs drawing update
+        .draw(pos_draw),
+        .cnext(cnext),
+        .drawdone(),
+        
+        .xstart(pos_xstart),
+        .xend  (pos_xend),
+        .ystart(pos_ystart),
+        .yend  (pos_yend),
+        .color (pos_color),
+        
+        .bmpregout(pos_bmpout),
+        .bmpregin(bmpregin),
+        .bmpreg_load(pos_load),
+        .bmpreg_shift(pos_shift),
+        
+        // bitmap (columns are x (width), rows are y (height) then state 0, 1, 2, etc
+        .bmp({20'b00000000000000000000,
+              20'b00000000010000000000,
+              20'b00000000000000000000,
+              20'b00111111111111111100,
+              20'b00000000000000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000000000000000,
+ 
+              20'b00000000000000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000000000000000,
+              20'b00111111111111111100,
+              20'b00000000000000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000000000000000,
+              
+              20'b00000000000000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000010000000000,
+              20'b00000000000000000000,
+              20'b00111111111111111100,
+              20'b00000000000000000000,
+              20'b00000000010000000000,
+              20'b00000000000000000000,})
     );
     
 
@@ -842,6 +965,7 @@ module gui #(
     localparam CAP2  = 4'd8;
     localparam CAP3  = 4'd9;
     localparam CAP4  = 4'd10;
+    localparam POS   = 4'd11;
 
     
     reg [3:0] state;
@@ -857,6 +981,7 @@ module gui #(
             right_draw <= 1'b0;
             clock_draw <= 1'b0;
             cap_draw <= 0;
+            pos_draw <= 1'b0;
         end else begin
             drawdone <= 1'b0;
             tft_draw <= 1'b0;
@@ -866,6 +991,7 @@ module gui #(
             right_draw <= 1'b0;
             clock_draw <= 1'b0;
             cap_draw <= 0;
+            pos_draw <= 1'b0;
             
             case(state)
                 INIT: begin
@@ -949,9 +1075,17 @@ module gui #(
                 end
                 
                 CAP4: begin
-                    if(!cap_update[4] && !tft_draw || tft_done) state <= INIT;
+                    if(!cap_update[4] && !tft_draw || tft_done) state <= POS;
                     else begin
                         if(cap_update[4]) cap_draw[4] <= 1'b1;
+                        tft_draw <= 1'b1;
+                    end
+                end                
+                
+                POS: begin
+                    if(!pos_update && !tft_draw || tft_done) state <= INIT;
+                    else begin
+                        if(pos_update) pos_draw <= 1'b1;
                         tft_draw <= 1'b1;
                     end
                 end
@@ -962,7 +1096,8 @@ module gui #(
         end
     end
     
-    assign update = start_update | cont_update | left_update | right_update | clock_update | |cap_update;
+    assign update = start_update | cont_update | left_update | right_update | 
+                    clock_update | |cap_update | pos_update;
     
     assign xstart = (state == START) ? start_xstart : 
                     (state == CONT)  ? cont_xstart : 
@@ -974,6 +1109,7 @@ module gui #(
                     (state == CAP2)  ? cap_xstart[2] : 
                     (state == CAP3)  ? cap_xstart[3] : 
                     (state == CAP4)  ? cap_xstart[4] : 
+                    (state == POS)   ? pos_xstart : 
                     16'b0;
     assign xend =   (state == START) ? start_xend :
                     (state == CONT)  ? cont_xend :
@@ -985,6 +1121,7 @@ module gui #(
                     (state == CAP2)  ? cap_xend[2] : 
                     (state == CAP3)  ? cap_xend[3] : 
                     (state == CAP4)  ? cap_xend[4] : 
+                    (state == POS)   ? pos_xend : 
                     16'b0;
     assign ystart = (state == START) ? start_ystart :
                     (state == CONT)  ? cont_ystart :
@@ -996,6 +1133,7 @@ module gui #(
                     (state == CAP2)  ? cap_ystart[2] : 
                     (state == CAP3)  ? cap_ystart[3] : 
                     (state == CAP4)  ? cap_ystart[4] : 
+                    (state == POS)   ? pos_ystart : 
                     16'b0;
     assign yend =   (state == START) ? start_yend :
                     (state == CONT)  ? cont_yend :
@@ -1007,6 +1145,7 @@ module gui #(
                     (state == CAP2)  ? cap_yend[2] : 
                     (state == CAP3)  ? cap_yend[3] : 
                     (state == CAP4)  ? cap_yend[4] : 
+                    (state == POS)   ? pos_yend : 
                     16'b0;
     assign color =  (state == START) ? start_color :
                     (state == CONT)  ? cont_color :
@@ -1018,6 +1157,7 @@ module gui #(
                     (state == CAP2)  ? cap_color[2] : 
                     (state == CAP3)  ? cap_color[3] : 
                     (state == CAP4)  ? cap_color[4] : 
+                    (state == POS)   ? pos_color : 
                     16'b0;
 
     
@@ -1034,9 +1174,11 @@ module gui #(
                         (state == CAP2)  ? cap_load[2] :
                         (state == CAP3)  ? cap_load[3] :
                         (state == CAP4)  ? cap_load[4] :
+                        (state == POS)   ? pos_load :
                         1'b0;
                         
-    wire bmpreg_shift = start_shift | cont_shift | left_shift | right_shift | clock_shift | |cap_shift;
+    wire bmpreg_shift = start_shift | cont_shift | left_shift | right_shift | 
+                        clock_shift | |cap_shift | pos_shift;
     
     always @(posedge clk) begin
         if(bmpreg_load)
@@ -1049,6 +1191,7 @@ module gui #(
                       (state == CAP2)  ? cap_bmpout[2]:
                       (state == CAP3)  ? cap_bmpout[3]:
                       (state == CAP4)  ? cap_bmpout[4]:
+                      (state == POS)   ? pos_bmpout:
                                          clock_bmpout;
         else if(bmpreg_shift)
             bmpreg <= bmpreg << BMPBITS;
