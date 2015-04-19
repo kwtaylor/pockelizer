@@ -226,6 +226,7 @@ module pockelizer (
     localparam DRAWVERT   = 4'd6;
     localparam NEXTBIT    = 4'd7;
     localparam DOCAP      = 4'd8;
+    localparam DRAWPOS    = 4'd9;
     localparam DRAWLOGO   = 4'd10;
     localparam WAITTOUCH  = 4'd11;
     localparam DRAWDOT    = 4'd12;
@@ -356,6 +357,9 @@ module pockelizer (
     localparam POSM = 2'd1;
     localparam POSR = 2'd2;
     
+    reg [1:0] pos_cap;
+    reg [1:0] pos_cap_b;
+    
     always @(posedge capclock) begin
         // running capture buffer
         if(startcap_r) begin
@@ -370,6 +374,7 @@ module pockelizer (
                 capdone <= 1'b1;
                 for(i = 0; i < WAVES; i = i+1)
                     wavedat[i] <= capbuf[i];
+                pos_cap <= pos_cap_b;
             end
             
             // start capture when condition met
@@ -378,9 +383,10 @@ module pockelizer (
             // reset things
             docap <= 1'b0;
             capdone <= 1'b0;
-            cappos <= pos_state == POSL ? LPOSOFFS :
-                      pos_state == POSM ? MPOSOFFS :
-                                          RPOSOFFS;
+            cappos <= pos_state == POSM ? MPOSOFFS :
+                      pos_state == POSR ? RPOSOFFS :
+                                          LPOSOFFS;
+            pos_cap_b <= pos_state;
         end
         
         //synchronize
@@ -397,7 +403,9 @@ module pockelizer (
     //  (0,0) y--->
     ////////////////////////////
               
-                   
+    wire [STEP_SIZE-1:0] eff_pos_cap = pos_cap == POSM ? MPOSOFFS-1'b1 :
+                                       pos_cap == POSR ? RPOSOFFS-1'b1 :
+                                                         LPOSOFFS-1'b1;
     
     always @(posedge clk or negedge arstn_sync) begin
         if(~arstn_sync) begin
@@ -475,7 +483,7 @@ module pockelizer (
                         step <= DRAWSTART;
                         start_rst <= 1'b1;
                         rstcapstart <= 1'b1;
-                    end else if(touch) step <= DRAWDOT;
+                    end //else if(touch) step <= DRAWDOT;
                 end
                 
                 // touchscreen test
@@ -505,19 +513,34 @@ module pockelizer (
                         ypos <= LEFTOFS;
                         bitstep <= capstart;
                         wave <= 0;
-                        if(wavedat[0][capstart]) step<=DRAWBIT1;
+                        if(eff_pos_cap == capstart) step<=DRAWPOS;
+                        else if(wavedat[0][capstart]) step<=DRAWBIT1;
+                        else step<=DRAWBIT0;
+                    end else draw <= 1'b1;
+                end
+                
+                DRAWPOS:    begin drawcmd <= {5'h00,6'h00,5'h1f, 16'd51, ypos, 16'd239 - TOPOFS, ypos};  // blue vertical line
+                    if(tft_done) begin
+                        if(wavedat[0][bitstep-1] != wavedat[0][bitstep]) step<=DRAWVERT;
+                        else if(wavedat[0][bitstep]) step<=DRAWBIT1;
                         else step<=DRAWBIT0;
                     end else draw <= 1'b1;
                 end
                              
                 DRAWBIT0:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos-WHEIGHT, ypos,  xpos-WHEIGHT, ypos+WWIDTH};  // horizontal line
-                    if(tft_done) step <= NEXTBIT;
-                    else draw <= 1'b1;
+                    if(tft_done) begin
+                        ypos <= ypos + WWIDTH;
+                        bitstep <= bitstep+1;
+                        step <= NEXTBIT;
+                    end else draw <= 1'b1;
                 end
                 
                 DRAWBIT1:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos,         ypos,  xpos,         ypos+WWIDTH};  // horizontal line
-                    if(tft_done) step <= NEXTBIT;
-                    else draw <= 1'b1;
+                    if(tft_done) begin
+                        ypos <= ypos + WWIDTH;
+                        bitstep <= bitstep+1;
+                        step <= NEXTBIT;
+                    end else draw <= 1'b1;
                 end
                 
                 DRAWVERT:   begin drawcmd <= {5'h1f,6'h3f,5'h1f,  xpos-WHEIGHT, ypos,  xpos,         ypos}; // vertical line
@@ -539,9 +562,8 @@ module pockelizer (
                             else step<=DRAWBIT0;
                         end
                     end else begin // next bit of wave
-                        ypos <= ypos + WWIDTH;
-                        bitstep <= bitstep+1;
-                        if(wavedat[wave][bitstep] != wavedat[wave][bitstep+1]) step<=DRAWVERT;
+                        if(wave == 0 && eff_pos_cap == bitstep) step<=DRAWPOS;
+                        else if(wavedat[wave][bitstep-1] != wavedat[wave][bitstep]) step<=DRAWVERT;
                         else if(wavedat[wave][bitstep]) step<=DRAWBIT1;
                         else step<=DRAWBIT0;
                     end
