@@ -23,7 +23,8 @@ module button #(
     parameter NUMSTATES = 1,
     parameter STATEBITS = 1,
     
-    parameter INTREG = 0 // use internal shift register
+    parameter INTREG = 0, // use internal shift register
+    parameter RSTSTATE = 0
 ) (
     input clk,
     input arstn,
@@ -75,11 +76,11 @@ end
 // button state
 always @(posedge clk or negedge arstn) begin
     if(!arstn) begin
-        state <= 0;
+        state <= RSTSTATE;
         update <= 1'b1;
     end else begin
         if(rst_state) begin
-            state <= 0;
+            state <= RSTSTATE;
         end else if(touched && !lasttouched) begin
             update <= 1'b1;
             if(state==NUMSTATES-1) state <= 0;

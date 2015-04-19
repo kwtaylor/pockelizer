@@ -1,6 +1,9 @@
 // encapsulates all the buttons in the gui
-module gui
-(
+module gui #(
+    parameter WAVES = 5,
+    parameter TOPOFS = 4,
+    parameter WVSTEP = 38
+) (
     input clk,
     input arstn,
     
@@ -30,7 +33,8 @@ module gui
     input cont_rst,
     output left_touched,
     output right_touched,
-    output [2:0] clock_state
+    output [2:0] clock_state,
+    output [WAVES*3-1:0] cap_state
 );
     localparam BMPWIDTH = 20;
     localparam BMPHEIGHT = 20;
@@ -622,9 +626,208 @@ module gui
               20'b00000000011000000000,
               20'b00000000000111000000,
               20'b00011111111111111000
-              
               })
     );
+    
+    wire [0:BMPWIDTH*BMPHEIGHT*BMPBITS*6-1] cap_bmp = 
+        {20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00100000000000001000,
+         20'b00010000000000010000,
+         20'b00001000000000100000,
+         20'b00000100000001000000,
+         20'b00000010000010000000,
+         20'b00000001000100000000,
+         20'b00000000101000000000,
+         20'b00000000010000000000,
+         20'b00000000101000000000,
+         20'b00000001000100000000,
+         20'b00000010000010000000,
+         20'b00000100000001000000,
+         20'b00001000000000100000,
+         20'b00010000000000010000,
+         20'b00100000000000001000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00111111111111111000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+        
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00000000000000001000,
+         20'b00111111111111111000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00100000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+        
+        
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00100000000000001000,
+         20'b00100000000000001000,
+         20'b00100000000000001000,
+         20'b00100000000000001000,
+         20'b00100000000000001000,
+         20'b00100000000000001000,
+         20'b00011110000011110000,
+         20'b00000001111100000000,
+         20'b00011110000011110000,
+         20'b00100000000000001000,
+         20'b00100000000000001000,
+         20'b00100000000000001000,
+         20'b00100000000000001000,
+         20'b00100000000000001000,
+         20'b00100000000000001000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+        
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000111111111100000,
+         20'b00001000000000010000,
+         20'b00010000000000001000,
+         20'b00010000000000001000,
+         20'b00001000000000010000,
+         20'b00000111111111100000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+        
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00010000000000100000,
+         20'b00010000000000010000,
+         20'b00011111111111111000,
+         20'b00010000000000000000,
+         20'b00010000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000,
+         20'b00000000000000000000
+        };
+        
+    wire [15:0] cap_xstart [WAVES-1:0];
+    wire [15:0] cap_xend   [WAVES-1:0];
+    wire [15:0] cap_ystart [WAVES-1:0];
+    wire [15:0] cap_yend   [WAVES-1:0];
+    wire [15:0] cap_color  [WAVES-1:0];
+    
+    reg  [WAVES-1:0] cap_draw;
+    wire [WAVES-1:0] cap_update;
+    wire [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] cap_bmpout [WAVES-1:0];
+    wire [WAVES-1:0] cap_load;
+    wire [WAVES-1:0] cap_shift;
+        
+    generate
+      genvar i;
+      for(i=0; i < WAVES; i=i+1) begin : GENCAP
+    
+        button #(
+            .XSTART(239-(TOPOFS+i*WVSTEP) - 28),
+            .YSTART(0),
+            .WIDTH(28),
+            .HEIGHT(50),
+            
+            .XBMP(2),
+            .YBMP(20),
+            .BMPWIDTH(BMPWIDTH),
+            .BMPHEIGHT(BMPHEIGHT),
+            .BMPBITS(BMPBITS),
+            
+            .NUMSTATES(6),
+            .STATEBITS(3),
+            
+            .BORDERRGB(16'b0), // no border
+            
+            .RSTSTATE(i==0 ? 3 : 0)
+        ) cap (
+            .clk(clk),
+            .arstn(arstn),
+            
+            // touch input
+            .touch(touch),
+            .touchx(touchx),// screen coordinates
+            .touchy(touchy),
+            
+            .touched(),
+            .state(cap_state[i*3 +: 3]),
+            .rst_state(1'b0),
+            
+            // drawing interface
+            .update(cap_update[i]), // needs drawing update
+            .draw(cap_draw[i]),
+            .cnext(cnext),
+            .drawdone(),
+            
+            .xstart(cap_xstart[i]),
+            .xend  (cap_xend[i]),
+            .ystart(cap_ystart[i]),
+            .yend  (cap_yend[i]),
+            .color (cap_color[i]),
+            
+            .bmpregout(cap_bmpout[i]),
+            .bmpregin(bmpregin),
+            .bmpreg_load(cap_load[i]),
+            .bmpreg_shift(cap_shift[i]),
+            
+            // bitmap (columns are x (width), rows are y (height) then state 0, 1, 2, etc
+            .bmp(cap_bmp)
+        );
+
+      end
+    endgenerate
     
     
     // gui draw states
@@ -634,6 +837,12 @@ module gui
     localparam RIGHT = 4'd3;
     localparam CLOCK = 4'd4;
     localparam CONT  = 4'd5;
+    localparam CAP0  = 4'd6;
+    localparam CAP1  = 4'd7;
+    localparam CAP2  = 4'd8;
+    localparam CAP3  = 4'd9;
+    localparam CAP4  = 4'd10;
+
     
     reg [3:0] state;
     
@@ -647,6 +856,7 @@ module gui
             left_draw <= 1'b0;
             right_draw <= 1'b0;
             clock_draw <= 1'b0;
+            cap_draw <= 0;
         end else begin
             drawdone <= 1'b0;
             tft_draw <= 1'b0;
@@ -655,6 +865,7 @@ module gui
             left_draw <= 1'b0;
             right_draw <= 1'b0;
             clock_draw <= 1'b0;
+            cap_draw <= 0;
             
             case(state)
                 INIT: begin
@@ -698,9 +909,49 @@ module gui
                 end
                 
                 CLOCK: begin
-                    if(!clock_update && !tft_draw || tft_done) state <= INIT;
+                    if(!clock_update && !tft_draw || tft_done) state <= CAP0;
                     else begin
                         if(clock_update) clock_draw <= 1'b1;
+                        tft_draw <= 1'b1;
+                    end
+                end
+                
+                CAP0: begin
+                    if(!cap_update[0] && !tft_draw || tft_done) state <= CAP1;
+                    else begin
+                        if(cap_update[0]) cap_draw[0] <= 1'b1;
+                        tft_draw <= 1'b1;
+                    end
+                end
+                
+                CAP1: begin
+                    if(!cap_update[1] && !tft_draw || tft_done) state <= CAP2;
+                    else begin
+                        if(cap_update[1]) cap_draw[1] <= 1'b1;
+                        tft_draw <= 1'b1;
+                    end
+                end
+                
+                CAP2: begin
+                    if(!cap_update[2] && !tft_draw || tft_done) state <= CAP3;
+                    else begin
+                        if(cap_update[2]) cap_draw[2] <= 1'b1;
+                        tft_draw <= 1'b1;
+                    end
+                end
+                
+                CAP3: begin
+                    if(!cap_update[3] && !tft_draw || tft_done) state <= CAP4;
+                    else begin
+                        if(cap_update[3]) cap_draw[3] <= 1'b1;
+                        tft_draw <= 1'b1;
+                    end
+                end
+                
+                CAP4: begin
+                    if(!cap_update[4] && !tft_draw || tft_done) state <= INIT;
+                    else begin
+                        if(cap_update[4]) cap_draw[4] <= 1'b1;
                         tft_draw <= 1'b1;
                     end
                 end
@@ -711,37 +962,62 @@ module gui
         end
     end
     
-    assign update = start_update | cont_update | left_update | right_update | clock_update;
+    assign update = start_update | cont_update | left_update | right_update | clock_update | |cap_update;
     
     assign xstart = (state == START) ? start_xstart : 
                     (state == CONT)  ? cont_xstart : 
                     (state == LEFT)  ? left_xstart  :
                     (state == RIGHT) ? right_xstart : 
                     (state == CLOCK) ? clock_xstart : 
+                    (state == CAP0)  ? cap_xstart[0] : 
+                    (state == CAP1)  ? cap_xstart[1] : 
+                    (state == CAP2)  ? cap_xstart[2] : 
+                    (state == CAP3)  ? cap_xstart[3] : 
+                    (state == CAP4)  ? cap_xstart[4] : 
                     16'b0;
     assign xend =   (state == START) ? start_xend :
                     (state == CONT)  ? cont_xend :
                     (state == LEFT)  ? left_xend :
                     (state == RIGHT) ? right_xend :
                     (state == CLOCK) ? clock_xend :
+                    (state == CAP0)  ? cap_xend[0] : 
+                    (state == CAP1)  ? cap_xend[1] : 
+                    (state == CAP2)  ? cap_xend[2] : 
+                    (state == CAP3)  ? cap_xend[3] : 
+                    (state == CAP4)  ? cap_xend[4] : 
                     16'b0;
     assign ystart = (state == START) ? start_ystart :
                     (state == CONT)  ? cont_ystart :
                     (state == LEFT)  ? left_ystart :
                     (state == RIGHT) ? right_ystart :
                     (state == CLOCK) ? clock_ystart :
+                    (state == CAP0)  ? cap_ystart[0] : 
+                    (state == CAP1)  ? cap_ystart[1] : 
+                    (state == CAP2)  ? cap_ystart[2] : 
+                    (state == CAP3)  ? cap_ystart[3] : 
+                    (state == CAP4)  ? cap_ystart[4] : 
                     16'b0;
     assign yend =   (state == START) ? start_yend :
                     (state == CONT)  ? cont_yend :
                     (state == LEFT)  ? left_yend :
                     (state == RIGHT) ? right_yend :
                     (state == CLOCK) ? clock_yend :
+                    (state == CAP0)  ? cap_yend[0] : 
+                    (state == CAP1)  ? cap_yend[1] : 
+                    (state == CAP2)  ? cap_yend[2] : 
+                    (state == CAP3)  ? cap_yend[3] : 
+                    (state == CAP4)  ? cap_yend[4] : 
                     16'b0;
     assign color =  (state == START) ? start_color :
                     (state == CONT)  ? cont_color :
                     (state == LEFT)  ? left_color :
                     (state == RIGHT) ? right_color :
                     (state == CLOCK) ? clock_color :
+                    (state == CAP0)  ? cap_color[0] : 
+                    (state == CAP1)  ? cap_color[1] : 
+                    (state == CAP2)  ? cap_color[2] : 
+                    (state == CAP3)  ? cap_color[3] : 
+                    (state == CAP4)  ? cap_color[4] : 
                     16'b0;
 
     
@@ -753,9 +1029,14 @@ module gui
                         (state == LEFT)  ? left_load :
                         (state == RIGHT) ? right_load :
                         (state == CLOCK) ? clock_load :
+                        (state == CAP0)  ? cap_load[0] :
+                        (state == CAP1)  ? cap_load[1] :
+                        (state == CAP2)  ? cap_load[2] :
+                        (state == CAP3)  ? cap_load[3] :
+                        (state == CAP4)  ? cap_load[4] :
                         1'b0;
                         
-    wire bmpreg_shift = start_shift | cont_shift | left_shift | right_shift | clock_shift;
+    wire bmpreg_shift = start_shift | cont_shift | left_shift | right_shift | clock_shift | |cap_shift;
     
     always @(posedge clk) begin
         if(bmpreg_load)
@@ -763,6 +1044,11 @@ module gui
                       (state == CONT)  ? cont_bmpout :
                       (state == LEFT)  ? left_bmpout :
                       (state == RIGHT) ? right_bmpout:
+                      (state == CAP0)  ? cap_bmpout[0]:
+                      (state == CAP1)  ? cap_bmpout[1]:
+                      (state == CAP2)  ? cap_bmpout[2]:
+                      (state == CAP3)  ? cap_bmpout[3]:
+                      (state == CAP4)  ? cap_bmpout[4]:
                                          clock_bmpout;
         else if(bmpreg_shift)
             bmpreg <= bmpreg << BMPBITS;

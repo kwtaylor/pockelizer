@@ -141,6 +141,7 @@ module pockelizer (
     wire [3:0] capclk_state;
     wire left_touched;
     wire right_touched;
+    wire [WAVES*3-1:0] cap_state;
     
     gui g (
         .clk(clk),
@@ -171,7 +172,8 @@ module pockelizer (
         .cont_rst(start_state),
         .left_touched(left_touched),
         .right_touched(right_touched),
-        .clock_state(capclk_state)
+        .clock_state(capclk_state),
+        .cap_state(cap_state)
         
     );
 
@@ -326,6 +328,26 @@ module pockelizer (
                     capclk_state == 3'd2 ? clk1_5k      :
                     capclk_state == 3'd1 ? ~logic_in[0] :
                                             logic_in[0] ;
+                                            
+    localparam CAP_DONTCARE = 3'd0;
+    localparam CAP_RISING   = 3'd1;
+    localparam CAP_FALLING  = 3'd2;
+    localparam CAP_EITHER   = 3'd3;
+    localparam CAP_LOW      = 3'd4;
+    localparam CAP_HIGH     = 3'd5;
+    
+    reg [WAVES-1:0] cap_cond;
+    
+    always @(*) for(i = 0; i < WAVES; i = i+1) begin
+        case(cap_state[i*3 +: 3])
+            CAP_RISING:  cap_cond[i] =  logic_in[i+1] && !capbuf[i][WHSTEPS-1];
+            CAP_FALLING: cap_cond[i] = !logic_in[i+1] &&  capbuf[i][WHSTEPS-1];
+            CAP_EITHER:  cap_cond[i] =  logic_in[i+1] !=  capbuf[i][WHSTEPS-1];
+            CAP_LOW:     cap_cond[i] = !logic_in[i+1];
+            CAP_HIGH:    cap_cond[i] =  logic_in[i+1];
+            default:     cap_cond[i] = 1'b1;
+        endcase
+    end
     
     always @(posedge capclock) begin
         // running capture buffer
@@ -343,10 +365,8 @@ module pockelizer (
                     wavedat[i] <= capbuf[i];
             end
             
-            // start capture at next edge
-            if(logic_in[1] != capbuf[0][WHSTEPS-1]) begin
-                docap <= 1'b1;
-            end
+            // start capture when condition met
+            if(&cap_cond) docap <= 1'b1;
         end else begin
             // reset things
             docap <= 1'b0;
