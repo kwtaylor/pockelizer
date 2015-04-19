@@ -60,6 +60,7 @@ module button #(
 );
 
 reg lasttouched;
+reg lastrst;
 
 // simple touch detection
 always @(posedge clk) begin
@@ -68,6 +69,7 @@ always @(posedge clk) begin
                      && touchy >= YSTART
                      && touchy <  YSTART+HEIGHT;
     lasttouched <= touched;
+    lastrst <= rst_state;
 end
 
 // button state
@@ -77,7 +79,6 @@ always @(posedge clk or negedge arstn) begin
         update <= 1'b1;
     end else begin
         if(rst_state) begin
-            update <= 1'b1;
             state <= 0;
         end else if(touched && !lasttouched) begin
             update <= 1'b1;
@@ -86,6 +87,8 @@ always @(posedge clk or negedge arstn) begin
         end else if(!touched && lasttouched) begin
             if(INVTOUCH) update <= 1'b1;
         end
+        
+        if(rst_state != lastrst) update <= 1'b1;
         if(draw) update <= 0;
     end
 end
@@ -160,9 +163,13 @@ assign xstart = XSTART;
 assign xend = XSTART+WIDTH-1;
 assign ystart = YSTART;
 assign yend = YSTART+HEIGHT-1;
-assign color = ((INVTOUCH && touched) ? 16'hFFFF : 16'h0000) ^
-               (inbord ? BORDERRGB :
-                inbmp  ? bmpcolor  :
-                BACKRGB);
+wire [15:0] color_int = ((INVTOUCH && touched) ? 16'hFFFF : 16'h0000) ^
+                         (inbord ? BORDERRGB :
+                          inbmp  ? bmpcolor  :
+                          BACKRGB);
+                    
+// dim button if rst_state
+assign color = rst_state ? {color_int[15:11]>>1, color_int[10:5]>>1, color_int[4:0]>>1}
+                         : color_int;
 
 endmodule

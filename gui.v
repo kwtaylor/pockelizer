@@ -24,8 +24,10 @@ module gui
     output [15:0] color,
     
     // button states
-    output start_state, // 0=pause, 1=go
+    output start_state, // 0=pause, 1=go (one shot)
     input start_rst,
+    output cont_state, // 0=pause, 1=go (continuous)
+    input cont_rst,
     output left_touched,
     output right_touched,
     output [2:0] clock_state
@@ -103,6 +105,106 @@ module gui
               20'b00010000000000010000,
               20'b00010000000000010000,
               20'b00001000000000100000,
+              20'b00001000000000100000,
+              20'b00000100000001000000,
+              20'b00000100000001000000,
+              20'b00000010000010000000,
+              20'b00000010000010000000,
+              20'b00000001000100000000,
+              20'b00000001000100000000,
+              20'b00000000101000000000,
+              20'b00000000101000000000,
+              20'b00000000010000000000,
+              
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00111111111111110000,
+              20'b00111111111111110000,
+              20'b00111111111111110000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00111111111111110000,
+              20'b00111111111111110000,
+              20'b00111111111111110000,
+              20'b00000000000000000000,
+              20'b00000000000000000000,
+              20'b00000000000000000000})
+    );
+    
+    wire [15:0] cont_xstart;
+    wire [15:0] cont_xend;
+    wire [15:0] cont_ystart;
+    wire [15:0] cont_yend;
+    wire [15:0] cont_color;
+    
+    reg cont_draw;
+    wire cont_update;
+    wire [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] cont_bmpout;
+    wire cont_load;
+    wire cont_shift;
+    
+    button #(
+        .XSTART(10),
+        .YSTART(160),
+        .WIDTH(40),
+        .HEIGHT(40),
+        
+        .XBMP(10),
+        .YBMP(10),
+        .BMPWIDTH(BMPWIDTH),
+        .BMPHEIGHT(BMPHEIGHT),
+        .BMPBITS(BMPBITS),
+        
+        .NUMSTATES(2),
+        .STATEBITS(1)
+    ) cont (
+        .clk(clk),
+        .arstn(arstn),
+        
+        // touch input
+        .touch(touch),
+        .touchx(touchx),// screen coordinates
+        .touchy(touchy),
+        
+        .touched(),
+        .state(cont_state),
+        .rst_state(cont_rst),
+        
+        // drawing interface
+        .update(cont_update), // needs drawing update
+        .draw(cont_draw),
+        .cnext(cnext),
+        .drawdone(),
+        
+        .xstart(cont_xstart),
+        .xend  (cont_xend),
+        .ystart(cont_ystart),
+        .yend  (cont_yend),
+        .color (cont_color),
+        
+        .bmpregout(cont_bmpout),
+        .bmpregin(bmpregin),
+        .bmpreg_load(cont_load),
+        .bmpreg_shift(cont_shift),
+        
+        // bitmap (columns are x (width), rows are y (height) then state 0, 1, 2, etc
+        .bmp({20'b00000000000000000000,
+              20'b11111111111111111110,
+              20'b10000000000000000010,
+              20'b01000011100000000100,
+              20'b01000001100100000100,
+              20'b00100010100010001000,
+              20'b00100010000010001000,
+              20'b00010010000010010000,
+              20'b00010001000100010000,
+              20'b00001000111000100000,
               20'b00001000000000100000,
               20'b00000100000001000000,
               20'b00000100000001000000,
@@ -507,8 +609,8 @@ module gui
               20'b00000000000000000000,
               20'b00011000000000000000,
               20'b00000000000000000000,
-              20'b00001111110000010000,
-              20'b00010000001000010000,
+              20'b00001111110000001000,
+              20'b00010000001000001000,
               20'b00010000000111110000,
               20'b00000000000000000000,
               20'b00010000000111111000,
@@ -531,6 +633,7 @@ module gui
     localparam LEFT  = 4'd2;
     localparam RIGHT = 4'd3;
     localparam CLOCK = 4'd4;
+    localparam CONT  = 4'd5;
     
     reg [3:0] state;
     
@@ -540,6 +643,7 @@ module gui
             tft_draw <= 1'b0;
             drawdone <= 1'b1;
             start_draw <= 1'b0;
+            cont_draw <= 1'b0;
             left_draw <= 1'b0;
             right_draw <= 1'b0;
             clock_draw <= 1'b0;
@@ -547,6 +651,7 @@ module gui
             drawdone <= 1'b0;
             tft_draw <= 1'b0;
             start_draw <= 1'b0;
+            cont_draw <= 1'b0;
             left_draw <= 1'b0;
             right_draw <= 1'b0;
             clock_draw <= 1'b0;
@@ -561,9 +666,17 @@ module gui
                 end
                 
                 START: begin
-                    if(!start_update && !tft_draw || tft_done) state <= LEFT;
+                    if(!start_update && !tft_draw || tft_done) state <= CONT;
                     else begin
                         if(start_update) start_draw <= 1'b1;
+                        tft_draw <= 1'b1;
+                    end
+                end     
+                
+                CONT: begin
+                    if(!cont_update && !tft_draw || tft_done) state <= LEFT;
+                    else begin
+                        if(cont_update) cont_draw <= 1'b1;
                         tft_draw <= 1'b1;
                     end
                 end     
@@ -598,29 +711,34 @@ module gui
         end
     end
     
-    assign update = start_update | left_update | right_update | clock_update;
+    assign update = start_update | cont_update | left_update | right_update | clock_update;
     
     assign xstart = (state == START) ? start_xstart : 
+                    (state == CONT)  ? cont_xstart : 
                     (state == LEFT)  ? left_xstart  :
                     (state == RIGHT) ? right_xstart : 
                     (state == CLOCK) ? clock_xstart : 
                     16'b0;
     assign xend =   (state == START) ? start_xend :
+                    (state == CONT)  ? cont_xend :
                     (state == LEFT)  ? left_xend :
                     (state == RIGHT) ? right_xend :
                     (state == CLOCK) ? clock_xend :
                     16'b0;
     assign ystart = (state == START) ? start_ystart :
+                    (state == CONT)  ? cont_ystart :
                     (state == LEFT)  ? left_ystart :
                     (state == RIGHT) ? right_ystart :
                     (state == CLOCK) ? clock_ystart :
                     16'b0;
     assign yend =   (state == START) ? start_yend :
+                    (state == CONT)  ? cont_yend :
                     (state == LEFT)  ? left_yend :
                     (state == RIGHT) ? right_yend :
                     (state == CLOCK) ? clock_yend :
                     16'b0;
     assign color =  (state == START) ? start_color :
+                    (state == CONT)  ? cont_color :
                     (state == LEFT)  ? left_color :
                     (state == RIGHT) ? right_color :
                     (state == CLOCK) ? clock_color :
@@ -631,16 +749,18 @@ module gui
     reg [0:BMPWIDTH*BMPHEIGHT*BMPBITS-1] bmpreg; // MSB to the right so we start from upper left
     
     wire bmpreg_load =  (state == START) ? start_load :
+                        (state == CONT)  ? cont_load :
                         (state == LEFT)  ? left_load :
                         (state == RIGHT) ? right_load :
                         (state == CLOCK) ? clock_load :
                         1'b0;
                         
-    wire bmpreg_shift = start_shift | left_shift | right_shift | clock_shift;
+    wire bmpreg_shift = start_shift | cont_shift | left_shift | right_shift | clock_shift;
     
     always @(posedge clk) begin
         if(bmpreg_load)
             bmpreg <= (state == START) ? start_bmpout :
+                      (state == CONT)  ? cont_bmpout :
                       (state == LEFT)  ? left_bmpout :
                       (state == RIGHT) ? right_bmpout:
                                          clock_bmpout;

@@ -137,6 +137,7 @@ module pockelizer (
     wire gdrawdone;
     wire start_state;
     reg start_rst;
+    wire cont_state;
     wire [3:0] capclk_state;
     wire left_touched;
     wire right_touched;
@@ -165,7 +166,9 @@ module pockelizer (
         .color(gcolor),
         
         .start_state(start_state),
-        .start_rst(start_rst),
+        .start_rst(start_rst || cont_state),
+        .cont_state(cont_state),
+        .cont_rst(start_state),
         .left_touched(left_touched),
         .right_touched(right_touched),
         .clock_state(capclk_state)
@@ -255,6 +258,7 @@ module pockelizer (
     reg [STEP_SIZE-1:0] bitstep;
     reg [3:0] wave;
 
+    reg [WHSTEPS-1:0] capbuf  [WAVES-1:0];
     reg [WHSTEPS-1:0] wavedat [WAVES-1:0];
     
     //assign wavedat[0] = 15'b010101010101010;
@@ -302,6 +306,7 @@ module pockelizer (
     // clock dividers
     // clocks are powers of 2 divisions of 50MHz
     reg [14:0] clkdiv;
+    integer i;
     
     always @(posedge clk)
         clkdiv <= clkdiv+1;
@@ -326,19 +331,20 @@ module pockelizer (
         // running capture buffer
         if(startcap_r) begin
             if(cappos < WHSTEPS) begin
-                wavedat[0][WHSTEPS-1] <= logic_in[1]; wavedat[0][WHSTEPS-2:0] <= wavedat[0][WHSTEPS-1:1];
-                wavedat[1][WHSTEPS-1] <= logic_in[2]; wavedat[1][WHSTEPS-2:0] <= wavedat[1][WHSTEPS-1:1];
-                wavedat[2][WHSTEPS-1] <= logic_in[3]; wavedat[2][WHSTEPS-2:0] <= wavedat[2][WHSTEPS-1:1];
-                wavedat[3][WHSTEPS-1] <= logic_in[4]; wavedat[3][WHSTEPS-2:0] <= wavedat[3][WHSTEPS-1:1];
-                wavedat[4][WHSTEPS-1] <= logic_in[5]; wavedat[4][WHSTEPS-2:0] <= wavedat[4][WHSTEPS-1:1];
+                for(i = 0; i < WAVES; i = i+1) begin
+                    capbuf[i][WHSTEPS-1] <= logic_in[i+1]; 
+                    capbuf[i][WHSTEPS-2:0] <= capbuf[i][WHSTEPS-1:1];
+                end
                 if(docap) cappos <= cappos + 1'b1;
                 capdone <= 1'b0;
             end else begin
                 capdone <= 1'b1;
+                for(i = 0; i < WAVES; i = i+1)
+                    wavedat[i] <= capbuf[i];
             end
             
             // start capture at next edge
-            if(logic_in[1] != wavedat[0][WHSTEPS-1]) begin
+            if(logic_in[1] != capbuf[0][WHSTEPS-1]) begin
                 docap <= 1'b1;
             end
         end else begin
@@ -433,7 +439,7 @@ module pockelizer (
                 end
                 
                 DOCAP: begin
-                    if(start_state) startcap <= 1'b1; //TODO also have one-time trigger
+                    if(start_state || cont_state) startcap <= 1'b1; //TODO also have one-time trigger
                     if(gupdate) begin
                         gdraw <= 1'b1;
                         drawgui <= 1'b1;
@@ -447,7 +453,7 @@ module pockelizer (
                 
                 // touchscreen test
                 DRAWDOT: begin drawcmd <= {5'h00,6'h3f,5'h00, 16'd239-touchx, 16'd319-touchy, 16'd239-touchx, 16'd319-touchy};  // draw green dot
-                    if(start_state) startcap <= 1'b1;
+                    if(start_state || cont_state) startcap <= 1'b1;
                     if(tft_done) step <= DOCAP;
                     else draw <= 1'b1;
                 end
