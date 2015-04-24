@@ -138,11 +138,15 @@ module pockelizer (
     wire start_state;
     reg start_rst;
     wire cont_state;
-    wire [2:0] capclk_state;
+    wire [3:0] capclk_state;
     wire left_touched;
     wire right_touched;
     wire [1:0] pos_state;
     wire [WAVES*3-1:0] cap_state;
+    
+    //screen dimensions
+    localparam XMAX    = 16'd239;
+    localparam YMAX    = 16'd319;
     
     gui g (
         .clk(clk),
@@ -150,8 +154,8 @@ module pockelizer (
         
         // touch input
         .touch(touch),
-        .touchx(16'd239-touchx),// screen coordinates
-        .touchy(16'd319-touchy),
+        .touchx(XMAX-touchx),// screen coordinates
+        .touchy(YMAX-touchy),
         
         // drawing interface
         .update(gupdate), // needs drawing update
@@ -317,20 +321,37 @@ module pockelizer (
     always @(posedge clk)
         clkdiv <= clkdiv+1;
         
+    wire clk25M   = clkdiv[0];
+    wire clk12_5M = clkdiv[1];
     wire clk6_25M = clkdiv[2];
+    wire clk3_13M = clkdiv[3];
     wire clk1_5M  = clkdiv[4];
+    wire clk781k  = clkdiv[5];
     wire clk390k  = clkdiv[6];
-    wire clk50k   = clkdiv[9];
+    wire clk195k  = clkdiv[7];
+    wire clk98k   = clkdiv[8];
+    wire clk48_8k = clkdiv[9];
+    wire clk24_4k = clkdiv[10];
+    wire clk12_2k = clkdiv[11];
     wire clk6k    = clkdiv[12];
+    wire clk3k    = clkdiv[13];
     wire clk1_5k  = clkdiv[14];
     
-    wire capclock = capclk_state == 3'd7 ? clk6_25M     :
-                    capclk_state == 3'd6 ? clk1_5M      :
-                    capclk_state == 3'd5 ? clk390k      :
-                    capclk_state == 3'd4 ? clk50k       :
-                    capclk_state == 3'd3 ? clk6k        :
-                    capclk_state == 3'd2 ? clk1_5k      :
-                    capclk_state == 3'd1 ? ~logic_in[0] :
+    wire capclock = capclk_state == 4'hf ? clk          :
+                    capclk_state == 4'he ? clk25M       :
+                    capclk_state == 4'hd ? clk12_5M     :
+                    capclk_state == 4'hc ? clk6_25M     :
+                    capclk_state == 4'hb ? clk3_13M     :
+                    capclk_state == 4'ha ? clk1_5M      :
+                    capclk_state == 4'h9 ? clk781k      :
+                    capclk_state == 4'h8 ? clk390k      :
+                    capclk_state == 4'h7 ? clk195k      :
+                    capclk_state == 4'h6 ? clk98k       :
+                    capclk_state == 4'h5 ? clk48_8k     :
+                    capclk_state == 4'h4 ? clk24_4k     :
+                    capclk_state == 4'h3 ? clk12_2k     :
+                    capclk_state == 4'h2 ? clk6k        :
+                    capclk_state == 4'h1 ? ~logic_in[0] :
                                             logic_in[0] ;
                                             
     localparam CAP_DONTCARE = 3'd0;
@@ -406,6 +427,30 @@ module pockelizer (
     wire [STEP_SIZE-1:0] eff_pos_cap = pos_cap == POSM ? MPOSOFFS-1'b1 :
                                        pos_cap == POSR ? RPOSOFFS-1'b1 :
                                                          LPOSOFFS-1'b1;
+                                                         
+    reg [STEP_SIZE-1:0] user_cursor = 0;
+    reg [STEP_SIZE-1:0] user_cursor_cnt;
+    reg user_cursor_ena = 1'b0;
+    
+    reg [15:0] posctr = 0;
+    wire touchinwav = touch && touchx <= TOPOFS+(WAVES-1)*WVSTEP+WHEIGHT && touchy <= YMAX-LEFTOFS;
+    
+    // counter to translate touch position into bitstep
+    // hope this happens fast enough between touch and draw to draw in the right place :P
+    always @(posedge clk) begin
+        if(touchinwav || posctr > 0) begin
+            if(posctr == 0) begin 
+                posctr <= YMAX-touchy-LEFTOFS;
+                user_cursor_cnt <= capstart;
+            end else if(posctr <= WWIDTH) begin
+                posctr <= 0;
+                user_cursor <= user_cursor_cnt;
+            end else begin
+                posctr <= posctr - WWIDTH;
+                user_cursor_cnt <= user_cursor_cnt + 1'b1;
+            end
+        end
+    end
     
     always @(posedge clk or negedge arstn_sync) begin
         if(~arstn_sync) begin
@@ -420,6 +465,7 @@ module pockelizer (
             rstcapstart <= 1'b0;
             step <= 0;
             capdone_c <= 1'b0;
+            user_cursor_ena <= 1'b0;
         end else begin
             clr_ctr <= 1'b1;
             init_tft <= 1'b0;
@@ -454,7 +500,7 @@ module pockelizer (
                 end
                 
                 // drawing program               color n/a      xstart,   ystart,           xend,       yend
-                DRAWLOGO : begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,        16'd239,    16'd319};  // logo background
+                DRAWLOGO : begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,           XMAX,       YMAX};  // logo background
                     uselogo <= 1'b1;
                     if(tft_done) begin
                         step <= WAITTOUCH;
@@ -466,7 +512,7 @@ module pockelizer (
                 end  
                 
                 // blank screen                 R,    G,    B, xstart,   ystart,           xend,       yend
-                DRAWINIT: begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,         16'd239,    16'd319};  // black background
+                DRAWINIT: begin drawcmd <= {5'h00,6'h00,5'h00,  16'd0,    16'd0,           XMAX,       YMAX};  // black background
                     if(tft_done) begin
                         step <= DRAWSTART;
                     end else draw <= 1'b1;
@@ -478,16 +524,19 @@ module pockelizer (
                         gdraw <= 1'b1;
                         drawgui <= 1'b1;
                         step <= DRAWGUI;
+                    end else if(touchinwav) begin
+                        step <= DRAWSTART;
+                        user_cursor_ena <= 1'b1;
                     end else if(capdone_c) begin
                         capdone_c <= 1'b0;
                         step <= DRAWSTART;
                         start_rst <= 1'b1;
                         rstcapstart <= 1'b1;
-                    end //else if(touch) step <= DRAWDOT;
+                    end
                 end
                 
                 // touchscreen test
-                DRAWDOT: begin drawcmd <= {5'h00,6'h3f,5'h00, 16'd239-touchx, 16'd319-touchy, 16'd239-touchx, 16'd319-touchy};  // draw green dot
+                DRAWDOT: begin drawcmd <= {5'h00,6'h3f,5'h00, XMAX-touchx, YMAX-touchy, XMAX-touchx, YMAX-touchy};  // draw green dot
                     if((start_state || cont_state) && !capdone_r) startcap <= 1'b1;
                     if(tft_done) step <= DOCAP;
                     else draw <= 1'b1;
@@ -507,21 +556,23 @@ module pockelizer (
                 end
                 
                 // drawing program               R,    G,    B, xstart,   ystart,            xend,      yend
-                DRAWSTART: begin drawcmd <= {5'h00,6'h00,5'h00, 16'd51,  LEFTOFS, 16'd239 - TOPOFS,  16'd319};  // black background
+                DRAWSTART: begin drawcmd <= {5'h00,6'h00,5'h00, 16'd51,  LEFTOFS,   XMAX - TOPOFS,      YMAX};  // black background
                     if(tft_done) begin
-                        xpos <= 16'd239 - TOPOFS;
+                        xpos <= XMAX - TOPOFS;
                         ypos <= LEFTOFS;
                         bitstep <= capstart;
                         wave <= 0;
-                        if(eff_pos_cap == capstart) step<=DRAWPOS;
+                        if(user_cursor_ena && user_cursor == capstart || eff_pos_cap == capstart) step<=DRAWPOS;
                         else if(wavedat[0][capstart]) step<=DRAWBIT1;
                         else step<=DRAWBIT0;
                     end else draw <= 1'b1;
                 end
                 
-                DRAWPOS:    begin drawcmd <= {5'h00,6'h00,5'h1f, 16'd51, ypos, 16'd239 - TOPOFS, ypos};  // blue vertical line
+                DRAWPOS:    begin drawcmd <= (user_cursor_ena && user_cursor == bitstep)?
+                                             {5'h00,6'h3f,5'h00, 16'd51, ypos, XMAX - TOPOFS, ypos}:  // green vertical line (cursor pos)
+                                             {5'h00,6'h00,5'h1f, 16'd51, ypos, XMAX - TOPOFS, ypos};  // blue vertical line (capture pos)
                     if(tft_done) begin
-                        if(wavedat[0][bitstep-1] != wavedat[0][bitstep]) step<=DRAWVERT;
+                        if(bitstep && wavedat[0][bitstep-1] != wavedat[0][bitstep]) step<=DRAWVERT;
                         else if(wavedat[0][bitstep]) step<=DRAWBIT1;
                         else step<=DRAWBIT0;
                     end else draw <= 1'b1;
@@ -562,7 +613,7 @@ module pockelizer (
                             else step<=DRAWBIT0;
                         end
                     end else begin // next bit of wave
-                        if(wave == 0 && eff_pos_cap == bitstep) step<=DRAWPOS;
+                        if(wave == 0 && (user_cursor_ena && user_cursor == bitstep || eff_pos_cap == bitstep)) step<=DRAWPOS;
                         else if(wavedat[wave][bitstep-1] != wavedat[wave][bitstep]) step<=DRAWVERT;
                         else if(wavedat[wave][bitstep]) step<=DRAWBIT1;
                         else step<=DRAWBIT0;
