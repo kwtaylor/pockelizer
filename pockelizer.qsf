@@ -1,3 +1,5 @@
+# This file is released in the public domain and may be used, modified and redistributed without restriction
+
 set_global_assignment -name FAMILY "MAX 10"
 set_global_assignment -name DEVICE 10M08SAE144C8GES
 set_global_assignment -name TOP_LEVEL_ENTITY pockelizer
