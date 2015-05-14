@@ -283,7 +283,7 @@ module pockelizer (
     reg [STEP_SIZE-1:0] cappos;
     reg [STEP_SIZE-1:0] capstart = 0;
     reg lastlefttouch, lastrighttouch;
-    reg updwav;
+    reg updwav, clrupdwav;
     reg rstcapstart;
     
     localparam STEPMOVE = 5; // number of steps to move per button
@@ -296,19 +296,21 @@ module pockelizer (
             lastlefttouch <= 1'b0;
             lastrighttouch <= 1'b0;
             updwav <= 1'b0;
+            clrupdwav <= 1'b0;
         end else begin
-            lastlefttouch <= left_touched;
-            lastrighttouch <= right_touched;
-            
-            if(left_touched && !lastlefttouch && capstart >= STEPMOVE) begin
+            if(step == DOCAP && clrupdwav) begin
+                updwav <= 1'b0;
+                clrupdwav <= 1'b1;
+            end else if(step != DOCAP && updwav) clrupdwav <= 1'b1;
+        
+            if(!updwav && left_touched && capstart >= STEPMOVE) begin
                 capstart <= capstart - STEPMOVE;
                 updwav <= 1'b1;
-            end else if(right_touched && !lastrighttouch && capstart < WHSTEPS-SCSTEPS) begin
+            end else if(!updwav && right_touched && capstart < WHSTEPS-SCSTEPS) begin
                 capstart <= capstart + STEPMOVE;
                 updwav <= 1'b1;
             end
             
-            if(step == DRAWSTART) updwav <= 1'b0;
             if(rstcapstart) capstart <= 0;
         end
     end
@@ -524,6 +526,8 @@ module pockelizer (
                         gdraw <= 1'b1;
                         drawgui <= 1'b1;
                         step <= DRAWGUI;
+                    end else if(updwav) begin 
+                        step <= DRAWSTART;
                     end else if(touchinwav) begin
                         step <= DRAWSTART;
                         user_cursor_ena <= 1'b1;
