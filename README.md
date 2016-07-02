@@ -3,7 +3,7 @@ Pocket Logic Analyzer for MAX 10 FPGA and Adafruit Arduino TFT
 
 This project implements a simple hand-held logic analyzer with 5 channels, selectable clock (external, or internal up to 50MHz), various trigger conditions, all controllable via touch screen. It still needs some more features and polishing before it's really usable as a debugging tool, but in its current state it's still fun to play with.
 
-It uses [this board](http://www.altera.com/products/devkits/altera/kit-max-10-evaluation.html) with [this screen](https://www.adafruit.com/products/1947).
+It uses [this board]https://www.altera.com/products/boards_and_kits/dev-kits/altera/kit-max-10-evaluation.html) with [this screen](https://www.adafruit.com/products/1947).
 The capacitive touch interface uses the I2C pins which are not pinned out on the
 MAX 10 board by default, so I may need to provide some diagrams showing how to solder that up later. I currently have scl on PIN_88 and sda on PIN_90.
 
@@ -17,7 +17,7 @@ Some Documentation:
 * [FT6x06 Application Note](http://www.adafruit.com/datasheets/FT6x06_AN_public_ver0.1.3.pdf)
 * [Opencores I<sup>2</sup>C-Master Core Specification](http://www.urel.feec.vutbr.cz/MPLD/PDF/i2c_specs.pdf)
 
-You can compile the design using [Quartus II Web Edition](http://www.altera.com/products/software/quartus-ii/web-edition/qts-we-index.html).
+You can compile the design using [Quartus Prime Lite Edition](http://dl.altera.com/?edition=lite) (Previously known as Quartus II Web Edition).
 I'm going to try to avoid proprietary components so it may be ported easily to other boards and other FPGA manufacturers.
 Notably, I am not going to use a NIOS II microcontroller for the main program logic. Instead everything will be HDL. This may also be because I'm a mashochist.
 
