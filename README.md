@@ -1,6 +1,8 @@
 # pockelizer
 Pocket Logic Analyzer for MAX 10 FPGA and Adafruit Arduino TFT
 
+![Project Image](http://kwtaylor.github.io/pockelizer.jpg)
+
 This project implements a simple hand-held logic analyzer with 5 channels, selectable clock (external, or internal up to 50MHz), various trigger conditions, all controllable via touch screen. It still needs some more features and polishing before it's really usable as a debugging tool, but in its current state it's still fun to play with.
 
 It uses [this board](https://www.altera.com/products/boards_and_kits/dev-kits/altera/kit-max-10-evaluation.html) with [this screen](https://www.adafruit.com/products/1947).
